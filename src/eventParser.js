@@ -241,6 +241,25 @@ class EventParser {
     }
 
     createGoogleCalendarUrl(details) {
+        // Check if running on iOS device
+        const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+        
+        if (isIOS) {
+            // iOS calendar format using webcal protocol
+            return `webcal://calendar.google.com/calendar/ical/${encodeURIComponent(details.text)}.ics?${new URLSearchParams({
+                action: 'TEMPLATE',
+                text: details.text,
+                dates: details.dates.replace(/[-:]/g, ''),
+                details: details.details,
+                location: details.location || '',
+                recur: details.recur || ''
+            }).toString()}`;
+        }
+        
+        return this.createWebCalendarUrl(details);
+    }
+
+    createWebCalendarUrl(details) {
         const baseUrl = 'https://calendar.google.com/calendar/render';
         
         // Parse the dates to determine if they include timezone information

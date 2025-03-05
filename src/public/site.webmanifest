@@ -1,0 +1,17 @@
+{
+    "name": "GCal Quick Add",
+    "short_name": "GCal Add",
+    "description": "Quickly add events to Google Calendar using natural language",
+    "icons": [
+        {
+            "src": "/apple-touch-icon.png",
+            "sizes": "180x180",
+            "type": "image/png"
+        }
+    ],
+    "theme_color": "#ffffff",
+    "background_color": "#ffffff",
+    "display": "standalone",
+    "start_url": "/gcal-quick-add/",
+    "scope": "/gcal-quick-add/"
+} 
