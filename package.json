@@ -1,0 +1,31 @@
+{
+  "name": "gcal-quick-add",
+  "version": "1.0.0",
+  "description": "Quickly add events to Google Calendar using natural language",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "keywords": [
+    "calendar",
+    "event",
+    "creator",
+    "ollama",
+    "google",
+    "ai"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@langchain/core": "^0.3.0",
+    "@langchain/google-genai": "^0.1.10",
+    "@langchain/ollama": "^0.1.0",
+    "langchain": "^0.3.0"
+  },
+  "devDependencies": {
+    "vite": "^5.1.4",
+    "vite-plugin-pwa": "^0.19.0"
+  }
+}

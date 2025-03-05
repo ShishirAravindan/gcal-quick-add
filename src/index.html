@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quick Calendar Event Creator</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+</head>
+<body>
+    <div class="app-container">
+        <header>
+            <div class="app-title">
+                <span class="material-symbols-rounded app-logo">event</span>
+                <h1>gCal quick add</h1>
+            </div>
+            <div class="header-controls">
+                <div class="model-status">
+                    <div id="statusIndicator" class="status-indicator"></div>
+                    <span id="modelName">Checking LLM...</span>
+                    <button id="retryConnection" class="retry-button" style="display: none;">Retry</button>
+                </div>
+                <button id="themeToggle" class="theme-toggle" aria-label="Toggle dark mode">
+                    <span class="material-symbols-rounded">dark_mode</span>
+                </button>
+            </div>
+        </header>
+        
+        <div class="card">
+            <div class="input-container">
+                <textarea 
+                    id="eventInput" 
+                    placeholder="Describe your event (e.g., 'Team meeting tomorrow at 2pm for 1 hour')"
+                    rows="4"
+                ></textarea>
+                <div class="button-container">
+                    <button id="createEvent" class="create-button">
+                        <span class="material-symbols-rounded">calendar_add_on</span>
+                        Create Event
+                    </button>
+                </div>
+                <div id="statusMessage" class="status-message"></div>
+                
+                <div id="modelSelector" class="model-selector">
+                    <label for="modelSelect">Select Model:</label>
+                    <select id="modelSelect"></select>
+                    
+                    <div id="googleApiKeyContainer" style="display: none;">
+                        <label for="googleApiKey">Google API Key:</label>
+                        <div class="api-key-input">
+                            <input type="password" id="googleApiKey" placeholder="Enter your Google API key">
+                            <button id="saveApiKey" class="api-key-button">Save</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="examples-section">
+            <div class="examples-header" id="examplesHeader">
+                <h2>
+                    <span class="material-symbols-rounded">lightbulb</span>
+                    Example Events
+                </h2>
+                <button class="examples-toggle" id="examplesToggle">
+                    <span class="material-symbols-rounded">expand_less</span>
+                </button>
+            </div>
+            <ul class="example-list" id="exampleList">
+                <li data-example="Team meeting tomorrow at 2pm for 1 hour">
+                    <div class="example-title">Basic Meeting</div>
+                    <div class="example-text">Team meeting tomorrow at 2pm for 1 hour</div>
+                </li>
+                <li data-example="Weekly team standup every Monday at 10am for 30min until end of March">
+                    <div class="example-title">Weekly Recurring Meeting</div>
+                    <div class="example-text">Weekly team standup every Monday at 10am for 30min until end of March</div>
+                </li>
+                <li data-example="Yoga class every Tuesday and Thursday at 7am for 1 hour">
+                    <div class="example-title">Multiple Days Recurring</div>
+                    <div class="example-text">Yoga class every Tuesday and Thursday at 7am for 1 hour</div>
+                </li>
+            </ul>
+        </div>
+        
+        <footer>
+            <p>Quick Calendar Event Creator &copy; 2025</p>
+        </footer>
+    </div>
+    
+    <script type="module" src="script.js"></script>
+</body>
+</html> 

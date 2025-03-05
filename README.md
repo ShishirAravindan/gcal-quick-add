@@ -1,33 +1,57 @@
-# gCal Quick Add
+# GCal Quick Add
 
-## Motivation
-Todoist has this very intuitive text interface. It's easy to use and allows you to create tasks, set reminders, assign projects, and track progress. I am going to call this **"smart parsing"**.
-I want to emulate this same functionality for creating gCal events from text input.
+A Progressive Web App that allows you to quickly add events to Google Calendar using natural language processing. Simply describe your event in plain English, and the app will create it in your calendar.
 
-The current process is to build two modules:
-- **`text-to-dictionary` module**
-    - Which parses the text input and converts it into a standardized data format
-- **`dictionary-to-response` module**
-    - current objective: pre-fill the calendar event instead of actually creating one
-    - should be a pre-fill instead of a publish event
-        - will need to look at gCal API to see how to achieve this
+## Features
 
+- Natural language processing for event creation
+- Support for recurring events
+- Progressive Web App (PWA) for mobile support
+- Dark/Light theme support
+- Multiple LLM model support (Google Gemini and Ollama)
+- Keyboard shortcuts for quick event creation
 
-Thoughts on the interface:
-- Omni-text box (basically as close to the todoist input interface) 
-- iFrame below displaying the calendar
+## Development
 
+1. Clone the repository:
+```bash
+git clone https://github.com/yourusername/gcal-quick-add.git
+cd gcal-quick-add
+```
 
-## Tech Stack
-### Backend: FastAPI (Python)
-- Reasoning: FastAPI is a modern, high-performance web framework that provides excellent support for Python's asynchronous capabilities. It is ideal for building APIs, especially when interacting with external services like the Google Calendar API. FastAPI’s automatic validation and documentation generation make it a robust choice for scalability and ease of maintenance.
-- Features:
-    - Asynchronous processing for better performance
-    - Type hinting for improved code clarity and validation
-    - Fast development with minimal setup
-### Frontend: Vanilla JavaScript
-- Reasoning: For now, Vanilla JavaScript provides a lightweight and straightforward approach to building the user interface, without the overhead of frameworks like React or Svelte. Since the frontend’s initial scope is relatively simple (an input box and an iFrame for Google Calendar), Vanilla JS will suffice for managing DOM interactions and making API calls.
-- Features:
-    - Lightweight, minimal dependencies
-    - Direct control over the DOM
-    - Flexibility to integrate a framework later, if necessary
+2. Install dependencies:
+```bash
+npm install
+```
+
+3. Start the development server:
+```bash
+npm run dev
+```
+
+## Deployment
+
+The app is automatically deployed to GitHub Pages when changes are pushed to the main branch. The deployment process:
+
+1. Builds the application using Vite
+2. Generates PWA assets and service workers
+3. Deploys to GitHub Pages
+
+To manually trigger a deployment, you can:
+
+1. Go to the Actions tab in your GitHub repository
+2. Select the "Deploy to GitHub Pages" workflow
+3. Click "Run workflow"
+
+## Configuration
+
+To use the Google Gemini model, you'll need to:
+
+1. Get an API key from Google AI Studio
+2. Enter the API key in the app's settings
+
+For Ollama models:
+
+1. Install Ollama locally
+2. Start the Ollama server
+3. Select an Ollama model in the app's settings
