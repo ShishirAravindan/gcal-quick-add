@@ -245,15 +245,21 @@ class EventParser {
         const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
         
         if (isIOS) {
-            // iOS calendar format using webcal protocol
-            return `webcal://calendar.google.com/calendar/ical/${encodeURIComponent(details.text)}.ics?${new URLSearchParams({
+            // Format parameters for Google Calendar app
+            const params = new URLSearchParams({
                 action: 'TEMPLATE',
                 text: details.text,
                 dates: details.dates.replace(/[-:]/g, ''),
                 details: details.details,
-                location: details.location || '',
-                recur: details.recur || ''
-            }).toString()}`;
+                location: details.location || ''
+            });
+            
+            if (details.recur) {
+                params.append('recur', details.recur);
+            }
+            
+            // Use Google Calendar app URL scheme
+            return `googlecalendar://calendar/event?${params.toString()}`;
         }
         
         return this.createWebCalendarUrl(details);
