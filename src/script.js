@@ -205,6 +205,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (modelToUse === MODELS.GEMINI) {
                     const savedApiKey = localStorage.getItem(STORAGE_KEYS.API_KEY);
                     if (savedApiKey) {
+                        googleApiKeyContainer.style.display = 'none';
                         await parser.setModel(modelToUse, savedApiKey);
                         updateConnectionStatus(STATUS.CONNECTED, `Google ${modelToUse}`);
                     } else {
@@ -213,6 +214,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         showStatus(UI_MESSAGES.ERRORS.NO_API_KEY, 'error');
                     }
                 } else {
+                    googleApiKeyContainer.style.display = 'none';
                     await parser.setModel(modelToUse);
                     updateConnectionStatus(parser.getStatus(), `${modelToUse} (${selectedModelData.size})`);
                 }
