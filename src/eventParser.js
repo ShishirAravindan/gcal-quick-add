@@ -180,7 +180,7 @@ class EventParser {
             
             // Add Gemini model
             models.push({
-                name: 'gemini-2.0-flash',
+                name: MODELS.GEMINI,
                 size: 'Cloud',
                 modified: new Date().toLocaleDateString(),
                 type: 'google'
@@ -192,7 +192,7 @@ class EventParser {
             
             // Return just the Gemini model if Ollama is not available
             return [{
-                name: 'gemini-2.0-flash',
+                name: MODELS.GEMINI,
                 size: 'Cloud',
                 modified: new Date().toLocaleDateString(),
                 type: 'google'

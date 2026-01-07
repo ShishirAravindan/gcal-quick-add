@@ -11,6 +11,27 @@ A Progressive Web App that allows you to quickly add events to Google Calendar u
 - Multiple LLM model support (Google Gemini and Ollama)
 - Keyboard shortcuts for quick event creation
 
+## Installing as App
+
+You can install this application as a standalone app on your device:
+
+### Desktop (Chrome/Edge)
+1. Open the app in your browser
+2. Click the install icon in the address bar (computer with down arrow)
+3. Click "Install"
+
+### iOS (Safari)
+1. Open the app in Safari
+2. Tap the "Share" button (box with arrow pointing up)
+3. Scroll down and tap "Add to Home Screen"
+4. Tap "Add"
+
+### Android (Chrome)
+1. Open the app in Chrome
+2. Tap the menu icon (three dots)
+3. Tap "Install app" or "Add to Home screen"
+4. Follow the on-screen instructions
+
 ## Development
 
 1. Clone the repository:

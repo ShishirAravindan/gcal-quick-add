@@ -190,7 +190,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (availableModels.length > 0) {
                 // Show model selector
                 populateModelSelector(availableModels);
-                modelSelector.style.display = 'block';
+                modelSelector.style.display = 'flex';
                 
                 // Get saved preference or use Gemini as default
                 const preferredModel = localStorage.getItem(STORAGE_KEYS.PREFERRED_MODEL) || MODELS.GEMINI;
