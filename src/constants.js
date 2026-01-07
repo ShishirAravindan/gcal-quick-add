@@ -1,5 +1,5 @@
 export const MODELS = {
-    GEMINI: 'gemini-2.0-flash'
+    GEMINI: 'gemini-3.0-flash'
 };
 
 export const STATUS = {
