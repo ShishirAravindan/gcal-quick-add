@@ -1,7 +1,6 @@
-import { ChatOllama } from "@langchain/ollama";
 import { PromptTemplate } from "@langchain/core/prompts";
-import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
-import { MODELS, STATUS } from './constants.js';
+import { MODEL_OPTIONS, STATUS } from './constants.js';
+import { ModelFactory } from './llm/factory.js';
 
 const PROMPT_TEMPLATE = `Extract calendar event details from the following text.
 Current datetime: {current_datetime}
@@ -59,73 +58,38 @@ Remember:
      * Weekly on specific days: RRULE:FREQ=WEEKLY;BYDAY=MO,WE,FR`;
 
 class EventParser {
-    constructor(modelName = MODELS.GEMINI) {
-        this.modelName = modelName;
-        this.googleApiKey = null;
+    constructor() {
+        this.currentModel = null;
         this.prompt = PromptTemplate.fromTemplate(PROMPT_TEMPLATE);
-        this.model = null;
-        this.status = STATUS.DISCONNECTED;
     }
     
     getStatus() {
-        return this.status;
-    }
-
-    async initModel() {
-        try {
-            this.status = STATUS.CONNECTING;
-            
-            if (this.modelName === MODELS.GEMINI) {
-                if (!this.googleApiKey) {
-                    this.status = STATUS.DISCONNECTED;
-                    throw new Error("Google API key is required for Gemini models");
-                }
-                
-                console.log(`Initializing with Google model: ${this.modelName}`);
-                
-                this.model = new ChatGoogleGenerativeAI({
-                    modelName: this.modelName,
-                    apiKey: this.googleApiKey,
-                    temperature: 0,
-                });
-                
-                // Test the connection with a minimal prompt
-                await this.model.invoke("Hello");
-                this.status = STATUS.CONNECTED;
-            } else {
-                console.log(`Initializing with Ollama model: ${this.modelName}`);
-                
-                const isOllamaRunning = await this.checkOllamaStatus();
-                if (!isOllamaRunning) {
-                    this.status = STATUS.DISCONNECTED;
-                    throw new Error('Ollama server is not running');
-                }
-                
-                this.model = new ChatOllama({
-                    baseUrl: "http://localhost:11434",
-                    model: this.modelName,
-                    temperature: 0,
-                    streaming: false,
-                });
-                
-                this.status = STATUS.CONNECTED;
-            }
-        } catch (error) {
-            this.status = STATUS.DISCONNECTED;
-            console.error('Model initialization failed:', error);
-            throw error;
-        }
+        return this.currentModel ? this.currentModel.getStatus().status : STATUS.DISCONNECTED;
     }
     
-    async setModel(modelName, apiKey = null) {
-        this.modelName = modelName;
-        
-        if (modelName === MODELS.GEMINI) {
-            this.googleApiKey = apiKey;
+    getStatusMessage() {
+        return this.currentModel ? this.currentModel.getStatus().message : 'No model selected';
+    }
+
+    async setModel(modelId, apiKey = null) {
+        const modelConfig = MODEL_OPTIONS.find(m => m.id === modelId);
+        if (!modelConfig) throw new Error(`Model ${modelId} not found`);
+
+        const config = { ...modelConfig };
+        if (config.type === 'google' || config.type === 'openrouter') {
+             config.apiKey = apiKey;
         }
+
+        console.log(`Switching to model: ${config.name} (${config.type})`);
         
-        await this.initModel();
-        console.log(`Switched to model: ${modelName}`);
+        try {
+            this.currentModel = ModelFactory.create(config.type, config);
+            await this.currentModel.initialize();
+            console.log(`Successfully initialized ${config.name}`);
+        } catch (error) {
+            console.error('Failed to initialize model:', error);
+            throw error;
+        }
     }
 
     formatCurrentDateTime() {
@@ -143,67 +107,7 @@ class EventParser {
     }
     
     getCurrentTimezone() {
-        // Get the local timezone
         return Intl.DateTimeFormat().resolvedOptions().timeZone;
-    }
-
-    async checkOllamaStatus() {
-        try {
-            const response = await fetch('http://localhost:11434/api/version');
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            const data = await response.json();
-            console.log('Ollama server version:', data.version);
-            return true;
-        } catch (error) {
-            console.error('Ollama server is not running:', error);
-            return false;
-        }
-    }
-    
-    async getAvailableModels() {
-        try {
-            const response = await fetch('http://localhost:11434/api/tags');
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            
-            const data = await response.json();
-            // Add Ollama models to the list
-            const models = data.models.map(model => ({
-                name: model.name,
-                size: this.formatSize(model.size),
-                modified: new Date(model.modified_at).toLocaleDateString(),
-                type: 'ollama'
-            }));
-            
-            // Add Gemini model
-            models.push({
-                name: 'gemini-2.0-flash',
-                size: 'Cloud',
-                modified: new Date().toLocaleDateString(),
-                type: 'google'
-            });
-            
-            return models;
-        } catch (error) {
-            console.error('Error fetching available models:', error);
-            
-            // Return just the Gemini model if Ollama is not available
-            return [{
-                name: 'gemini-2.0-flash',
-                size: 'Cloud',
-                modified: new Date().toLocaleDateString(),
-                type: 'google'
-            }];
-        }
-    }
-    
-    formatSize(bytes) {
-        if (!bytes) return '';
-        const gb = bytes / (1024 * 1024 * 1024);
-        return `${gb.toFixed(1)}GB`;
     }
 
     parseOutputToObject(output) {
@@ -218,15 +122,22 @@ class EventParser {
             }
         }
 
-        // Validate required fields
         const requiredFields = ['text', 'dates'];
         for (const field of requiredFields) {
             if (!result[field]) {
+                try {
+                    const jsonStart = output.indexOf('{');
+                    const jsonEnd = output.lastIndexOf('}');
+                    if (jsonStart >= 0 && jsonEnd > jsonStart) {
+                         const json = JSON.parse(output.substring(jsonStart, jsonEnd + 1));
+                         if (json.text && json.dates) return json;
+                    }
+                } catch(e) {}
+                
                 throw new Error(`Missing required field: ${field}`);
             }
         }
 
-        // Ensure recur field has RRULE: prefix if present
         if (result.recur && !result.recur.startsWith('RRULE:')) {
             result.recur = `RRULE:${result.recur}`;
         }
@@ -241,11 +152,9 @@ class EventParser {
     }
 
     createGoogleCalendarUrl(details) {
-        // Check if running on iOS device
         const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
         
         if (isIOS) {
-            // Format parameters for Google Calendar app
             const params = new URLSearchParams({
                 action: 'TEMPLATE',
                 text: details.text,
@@ -254,25 +163,15 @@ class EventParser {
                 location: details.location || ''
             });
             
-            if (details.recur) {
-                params.append('recur', details.recur);
-            }
+            if (details.recur) params.append('recur', details.recur);
             
-            // Use Google Calendar app URL scheme
             return `googlecalendar://calendar/event?${params.toString()}`;
         }
         
-        return this.createWebCalendarUrl(details);
-    }
-
-    createWebCalendarUrl(details) {
         const baseUrl = 'https://calendar.google.com/calendar/render';
-        
-        // Parse the dates to determine if they include timezone information
         const datesStr = details.dates;
         let ctz = null;
         
-        // If the dates don't include 'Z' (UTC marker), add the local timezone
         if (!datesStr.includes('Z')) {
             ctz = this.getCurrentTimezone();
         }
@@ -280,69 +179,38 @@ class EventParser {
         const params = new URLSearchParams({
             action: 'TEMPLATE',
             text: details.text,
-            dates: details.dates.replace(/[-:]/g, ''),  // Remove any extra formatting
+            dates: details.dates.replace(/[-:]/g, ''),
             details: details.details
         });
 
-        if (details.location) {
-            params.append('location', details.location);
-        }
-
-        if (details.recur) {
-            params.append('recur', details.recur);
-        }
-        
-        // Add timezone parameter if needed
-        if (ctz) {
-            params.append('ctz', ctz);
-        }
+        if (details.location) params.append('location', details.location);
+        if (details.recur) params.append('recur', details.recur);
+        if (ctz) params.append('ctz', ctz);
 
         return `${baseUrl}?${params.toString()}`;
     }
 
     async parseEvent(text) {
-        try {
-            // Initialize model if not already done
-            if (!this.model) {
-                await this.initModel();
-            }
-            
-            // For Ollama models, verify Ollama is running
-            if (this.modelName !== MODELS.GEMINI) {
-                const isOllamaRunning = await this.checkOllamaStatus();
-                if (!isOllamaRunning) {
-                    throw new Error('Ollama server is not running. Please start Ollama first.');
-                }
-            }
-
-            console.log(`Parsing event text with model ${this.modelName}:`, text);
-            
-            // Get the formatted prompt with current datetime and timezone
-            const formattedPrompt = await this.prompt.invoke({
-                input: text,
-                current_datetime: this.formatCurrentDateTime(),
-                current_timezone: this.getCurrentTimezone()
-            });
-            console.debug('Formatted prompt:', formattedPrompt);
-            
-            // Get model's response
-            const response = await this.model.invoke(formattedPrompt);
-            console.debug('Model response:', response);
-            
-            // Parse the response into an object
-            const details = this.parseOutputToObject(response.content);
-            console.debug('Parsed details:', details);
-            
-            // Create the calendar URL
-            const calendarUrl = this.createGoogleCalendarUrl(details);
-            console.debug('Calendar URL:', calendarUrl);
-            
-            return calendarUrl;
-        } catch (error) {
-            console.error('Error parsing event:', error);
-            throw new Error(`Failed to parse event details: ${error.message}`);
+        if (!this.currentModel) {
+            throw new Error("No model selected or initialized");
         }
+
+        console.log(`Parsing event text with model ${this.currentModel.name}:`, text);
+        
+        const formattedPrompt = await this.prompt.invoke({
+            input: text,
+            current_datetime: this.formatCurrentDateTime(),
+            current_timezone: this.getCurrentTimezone()
+        });
+        
+        const promptString = formattedPrompt.toString();
+        
+        const responseText = await this.currentModel.generate(promptString);
+        console.debug('Model response:', responseText);
+        
+        const details = this.parseOutputToObject(responseText);
+        return this.createGoogleCalendarUrl(details);
     }
 }
 
-export default EventParser; 
+export default EventParser;

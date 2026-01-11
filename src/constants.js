@@ -1,37 +1,91 @@
-export const MODELS = {
-    GEMINI: 'gemini-2.0-flash'
+export const STATUS = {
+    DISCONNECTED: 'disconnected',
+    CONNECTING: 'connecting',
+    CONNECTED: 'connected'
 };
 
-export const STATUS = {
-    CONNECTED: 'connected',
-    CONNECTING: 'connecting',
-    DISCONNECTED: 'disconnected'
+export const MODEL_TYPES = {
+    CLOUD: { icon: 'cloud', label: 'Cloud API' },
+    BROWSER: { icon: 'laptop', label: 'In-Browser' },
+    DEVICE: { icon: 'devices', label: 'On-Device' }
 };
+
+export const MODEL_OPTIONS = [
+    {
+        id: 'gemini-3-flash-preview',
+        name: 'Gemini 3 Flash (Preview)',
+        type: 'google',
+        servingPattern: 'CLOUD',
+        description: 'Fastest Google Cloud Model'
+    },
+    {
+        id: 'gemini-3-pro-preview',
+        name: 'Gemini 3 Pro (Preview)',
+        type: 'google',
+        servingPattern: 'CLOUD',
+        description: 'High Intelligence Google Cloud Model'
+    },
+    {
+        id: 'browser-t5',
+        name: 'In-Browser (LaMini T5)',
+        type: 'browser',
+        servingPattern: 'BROWSER',
+        modelName: 'Xenova/LaMini-Flan-T5-248M',
+        description: 'Runs locally in browser (Private, no setup)'
+    },
+    {
+        id: 'ollama-llama3',
+        name: 'Ollama (Llama 3)',
+        type: 'ollama',
+        servingPattern: 'DEVICE',
+        modelName: 'llama3',
+        baseUrl: 'http://localhost:11434',
+        description: 'Local inference via Ollama'
+    },
+    {
+        id: 'lmstudio-local',
+        name: 'LM Studio (Local)',
+        type: 'lmstudio',
+        servingPattern: 'DEVICE',
+        modelName: 'local-model',
+        baseUrl: 'http://localhost:1234/v1',
+        description: 'Local inference via LM Studio'
+    },
+    {
+        id: 'openrouter-auto',
+        name: 'OpenRouter (Auto)',
+        type: 'openrouter',
+        servingPattern: 'CLOUD',
+        modelName: 'auto', 
+        baseUrl: 'https://openrouter.ai/api/v1',
+        description: 'Cloud API Aggregator'
+    }
+];
 
 export const STORAGE_KEYS = {
-    THEME: 'theme',
-    API_KEY: 'googleApiKey',
-    PREFERRED_MODEL: 'preferredModel',
-    EXAMPLES_VISIBLE: 'examplesVisible'
+    THEME: 'gcal_theme',
+    API_KEY: 'gcal_api_key', 
+    OPENROUTER_KEY: 'gcal_openrouter_key',
+    PREFERRED_MODEL_ID: 'gcal_preferred_model_id',
+    EXAMPLES_VISIBLE: 'gcal_examples_visible'
 };
 
 export const UI_MESSAGES = {
+    STATUS: {
+        CONNECTING: 'Connecting...',
+        DISCONNECTED: 'Disconnected',
+        PROCESSING: 'Processing...'
+    },
     ERRORS: {
-        NO_API_KEY: 'Please enter your Google API key',
+        NO_API_KEY: 'API Key required',
+        INVALID_API_KEY: 'Invalid API Key',
+        NO_MODELS: 'No models available',
         NO_EVENT_DETAILS: 'Please enter event details',
-        NO_MODELS: 'No models found. Please install at least one model.',
-        INVALID_API_KEY: 'Please enter a valid API key',
-        OLLAMA_NOT_RUNNING: 'Ollama server is not running. Please start Ollama first.'
+        CONNECTION_FAILED: 'Connection failed'
     },
     SUCCESS: {
-        MODEL_SWITCHED: (model) => `Switched to model: ${model}`,
-        API_KEY_SAVED: 'Google API key saved and model initialized',
-        EVENT_CREATED: 'Event created! Opening Google Calendar...'
-    },
-    STATUS: {
-        PROCESSING: 'Processing your request...',
-        CHECKING_MODELS: 'Checking models...',
-        CONNECTING: 'Connecting...',
-        DISCONNECTED: 'Disconnected'
+        EVENT_CREATED: 'Event link created!',
+        API_KEY_SAVED: 'API Key saved',
+        MODEL_SWITCHED: (name) => `Switched to ${name}`
     }
-}; 
+};
