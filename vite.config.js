@@ -16,6 +16,11 @@ export default defineConfig({
     }
   },
   base: '/gcal-quick-add/',
+  test: {
+    globals: true,
+    environment: 'jsdom',
+    include: ['../tests/**/*.{test,spec}.js'],
+  },
   plugins: [
     VitePWA({
       registerType: 'autoUpdate',
