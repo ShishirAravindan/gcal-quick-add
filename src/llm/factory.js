@@ -1,5 +1,5 @@
 import { GoogleProvider } from "./providers/google.js";
-import { LocalProvider } from "./providers/local.js";
+import { OpenAIProvider } from "./providers/openai.js";
 import { BrowserProvider } from "./providers/browser.js";
 
 export class ModelFactory {
@@ -9,10 +9,10 @@ export class ModelFactory {
                 return new GoogleProvider(config);
             case 'ollama':
             case 'local': 
-            case 'openai': // Generic OpenAI compatible
+            case 'openai': 
             case 'openrouter':
             case 'lmstudio':
-                return new LocalProvider({ ...config, type });
+                return new OpenAIProvider(config);
             case 'browser':
                 return new BrowserProvider(config);
             default:

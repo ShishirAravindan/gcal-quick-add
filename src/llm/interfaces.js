@@ -12,6 +12,10 @@ export class ModelInterface {
         throw new Error('Method "generate" must be implemented');
     }
 
+    async generateStructured(prompt, schema) {
+        throw new Error('Method "generateStructured" must be implemented');
+    }
+
     getStatus() {
         // Returns { status: 'connected' | 'disconnected' | 'connecting', message: '' }
         throw new Error('Method "getStatus" must be implemented');

@@ -16,15 +16,13 @@ export class GoogleProvider extends ModelInterface {
         try {
             this.status = 'connecting';
             this.model = new ChatGoogleGenerativeAI({
-                modelName: this.config.modelName || 'gemini-3-flash-preview', // Default to new Gemini 3
+                modelName: this.config.modelName || 'gemini-3-flash-preview',
                 apiKey: this.config.apiKey,
                 temperature: 0,
-                maxOutputTokens: 2048,
             });
 
             // Quick connectivity check
             await this.model.invoke("hi");
-            
             this.status = 'connected';
         } catch (error) {
             this.status = 'disconnected';
@@ -34,12 +32,15 @@ export class GoogleProvider extends ModelInterface {
     }
 
     async generate(prompt) {
-        if (this.status !== 'connected' || !this.model) {
-             await this.initialize();
-        }
-        
+        if (this.status !== 'connected' || !this.model) await this.initialize();
         const response = await this.model.invoke(prompt);
         return response.content;
+    }
+
+    async generateStructured(prompt, schema) {
+        if (this.status !== 'connected' || !this.model) await this.initialize();
+        const structuredModel = this.model.withStructuredOutput(schema);
+        return await structuredModel.invoke(prompt);
     }
     
     getStatus() {

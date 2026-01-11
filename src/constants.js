@@ -39,7 +39,7 @@ export const MODEL_OPTIONS = [
         type: 'ollama',
         servingPattern: 'DEVICE',
         modelName: 'llama3',
-        baseUrl: 'http://localhost:11434',
+        baseUrl: 'http://localhost:11434/v1',
         description: 'Local inference via Ollama'
     },
     {
