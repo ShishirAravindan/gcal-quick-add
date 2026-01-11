@@ -6,7 +6,14 @@ export default defineConfig({
   root: 'src',
   build: {
     outDir: '../dist',
-    emptyOutDir: true
+    emptyOutDir: true,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'transformers': ['@xenova/transformers'],
+        }
+      }
+    }
   },
   base: '/gcal-quick-add/',
   plugins: [

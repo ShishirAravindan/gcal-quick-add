@@ -1,203 +1,273 @@
 import EventParser from './eventParser.js';
-import { MODEL_OPTIONS, MODEL_TYPES, STORAGE_KEYS, UI_MESSAGES, STATUS } from './constants.js';
+import { MODEL_OPTIONS, STORAGE_KEYS, UI_MESSAGES, STATUS } from './constants.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     // DOM Elements
     const eventInput = document.getElementById('eventInput');
-    const createEventButton = document.getElementById('createEvent');
-    const statusMessage = document.getElementById('statusMessage');
-    const statusIndicator = document.getElementById('statusIndicator');
-    const modelIconDisplay = document.getElementById('modelIcon');
-    const modelNameDisplay = document.getElementById('modelName');
-    const retryButton = document.getElementById('retryConnection');
-    const exampleItems = document.querySelectorAll('.example-list li');
-    const examplesToggle = document.getElementById('examplesToggle');
-    const exampleList = document.getElementById('exampleList');
-    const examplesHeader = document.getElementById('examplesHeader');
-    const themeToggle = document.getElementById('themeToggle');
-    const modelSelect = document.getElementById('modelSelect');
-    const apiKeyContainer = document.getElementById('apiKeyContainer');
+    const magicBoxContainer = document.getElementById('magicBoxContainer');
+    const mainActionButton = document.getElementById('mainActionButton');
+    const buttonText = document.getElementById('buttonText');
+    const actionFlipCard = document.getElementById('actionFlipCard');
+    
+    // Config Elements
     const apiKeyInput = document.getElementById('apiKeyInput');
-    const saveApiKeyButton = document.getElementById('saveApiKey');
+    const baseUrlInput = document.getElementById('baseUrlInput');
+    const saveConfigButton = document.getElementById('saveConfig');
+    const cancelConfigButton = document.getElementById('cancelConfig');
+    const keyGroup = document.getElementById('keyGroup');
+    const urlGroup = document.getElementById('urlGroup');
+    const openConfigBtn = document.getElementById('openConfig');
+    
+    // Status Elements
+    const statusDot = document.getElementById('statusDot');
+    const statusText = document.getElementById('statusText');
+    const statusMessage = document.getElementById('statusMessage');
+    const themeToggle = document.getElementById('themeToggle');
+    
+    // Pattern & Pill
+    const enginePill = document.getElementById('enginePill');
+    const currentModelLabel = document.getElementById('currentModelLabel');
+    const dockItems = document.querySelectorAll('.dock-item');
+    
+    // Tray Elements
+    const modelTray = document.getElementById('modelTray');
+    const trayOverlay = document.getElementById('trayOverlay');
+    const trayList = document.getElementById('trayList');
+    const closeTrayBtn = document.getElementById('closeTray');
 
     // State
-    let isExamplesVisible = true;
     const parser = new EventParser();
+    let currentPattern = 'CLOUD';
+    let selectedModelId = localStorage.getItem(STORAGE_KEYS.PREFERRED_MODEL_ID) || MODEL_OPTIONS[0].id;
+    let isConfiguring = false;
 
-    // Initialize
+    // --- Initialize ---
     initTheme();
-    loadModelsUI();
-    
-    // Event Listeners
-    createEventButton.addEventListener('click', createEvent);
-    
-    eventInput.addEventListener('keydown', (e) => {
-        if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-            e.preventDefault();
+    // Validate selected model matches pattern
+    const initialModel = MODEL_OPTIONS.find(m => m.id === selectedModelId);
+    if (initialModel) {
+        currentPattern = initialModel.servingPattern;
+    }
+    selectPattern(currentPattern, false); // Don't re-initialize immediately, let selectPattern do it
+
+    // --- UI Logic ---
+
+    function selectPattern(pattern, shouldInit = true) {
+        currentPattern = pattern;
+        
+        // Update Dock UI
+        dockItems.forEach(item => {
+            item.classList.toggle('selected', item.getAttribute('data-pattern') === pattern);
+        });
+
+        // Accent Color
+        const colors = { 'CLOUD': '#268bd2', 'BROWSER': '#859900', 'DEVICE': '#cb4b16' };
+        document.documentElement.style.setProperty('--pattern-glow', colors[pattern]);
+        
+        // Ensure selected model belongs to this pattern
+        const currentModel = MODEL_OPTIONS.find(m => m.id === selectedModelId);
+        if (!currentModel || currentModel.servingPattern !== pattern) {
+            // Pick first model for this pattern
+            selectedModelId = MODEL_OPTIONS.find(m => m.servingPattern === pattern).id;
+        }
+
+        updateEnginePill();
+        updateButtonState();
+        if (shouldInit) initializeModel();
+    }
+
+    function updateEnginePill() {
+        const model = MODEL_OPTIONS.find(m => m.id === selectedModelId);
+        currentModelLabel.textContent = model ? model.name : 'Unknown';
+        enginePill.classList.add('visible');
+    }
+
+    function openTray() {
+        const patternModels = MODEL_OPTIONS.filter(m => m.servingPattern === currentPattern);
+        trayList.innerHTML = '';
+        
+        patternModels.forEach(model => {
+            const item = document.createElement('div');
+            item.className = `tray-item ${model.id === selectedModelId ? 'selected' : ''}`;
+            
+            // Add pencil icon for cloud models
+            const isCloud = ['google', 'openrouter'].includes(model.type);
+            const editHtml = isCloud ? `
+                <div class="edit-icon" title="Configure Model">
+                    <span class="material-symbols-rounded" style="font-size: 18px;">edit</span>
+                </div>
+            ` : '';
+
+            item.innerHTML = `
+                <div>
+                    <div style="font-weight: 600;">${model.name}</div>
+                    <div class="model-desc">${model.description}</div>
+                </div>
+                ${editHtml}
+            `;
+
+            item.onclick = (e) => {
+                // If clicked the edit icon specifically
+                if (e.target.closest('.edit-icon')) {
+                    e.stopPropagation();
+                    selectedModelId = model.id;
+                    localStorage.setItem(STORAGE_KEYS.PREFERRED_MODEL_ID, model.id);
+                    updateEnginePill();
+                    closeTray();
+                    toggleConfig(true);
+                    return;
+                }
+
+                selectedModelId = model.id;
+                localStorage.setItem(STORAGE_KEYS.PREFERRED_MODEL_ID, model.id);
+                closeTray();
+                updateEnginePill();
+                updateButtonState();
+                initializeModel();
+            };
+            trayList.appendChild(item);
+        });
+
+        modelTray.classList.add('open');
+        trayOverlay.classList.add('visible');
+    }
+
+    function closeTray() {
+        modelTray.classList.remove('open');
+        trayOverlay.classList.remove('visible');
+    }
+
+    function toggleConfig(show) {
+        isConfiguring = show;
+        if (show) {
+            const model = MODEL_OPTIONS.find(m => m.id === selectedModelId);
+            // Dynamic Visibility
+            keyGroup.classList.toggle('hidden', !['google', 'openrouter'].includes(model.type));
+            urlGroup.classList.toggle('hidden', !['ollama', 'lmstudio', 'openrouter'].includes(model.type));
+            
+            // Fill existing
+            if (model.type === 'google') apiKeyInput.value = localStorage.getItem(STORAGE_KEYS.API_KEY) || '';
+            if (model.type === 'openrouter') apiKeyInput.value = localStorage.getItem(STORAGE_KEYS.OPENROUTER_KEY) || '';
+            baseUrlInput.value = model.baseUrl || ''; // Fallback to constant
+            
+            actionFlipCard.classList.add('flipped');
+        } else {
+            actionFlipCard.classList.remove('flipped');
+        }
+    }
+
+    function updateButtonState() {
+        const model = MODEL_OPTIONS.find(m => m.id === selectedModelId);
+        const needsKey = ['google', 'openrouter'].includes(model.type);
+        const hasKey = needsKey ? (model.type === 'google' ? localStorage.getItem(STORAGE_KEYS.API_KEY) : localStorage.getItem(STORAGE_KEYS.OPENROUTER_KEY)) : true;
+        
+        if (needsKey && !hasKey) {
+            mainActionButton.classList.add('warning');
+            buttonText.textContent = 'Setup Required';
+        } else {
+            mainActionButton.classList.remove('warning');
+            buttonText.textContent = 'Create Event';
+        }
+    }
+
+    async function initializeModel() {
+        updateConnectionStatus(STATUS.CONNECTING);
+        const model = MODEL_OPTIONS.find(m => m.id === selectedModelId);
+        if (!model) return;
+
+        let key = null;
+        if (model.type === 'google') key = localStorage.getItem(STORAGE_KEYS.API_KEY);
+        if (model.type === 'openrouter') key = localStorage.getItem(STORAGE_KEYS.OPENROUTER_KEY);
+
+        try {
+            await parser.setModel(selectedModelId, key);
+            updateConnectionStatus(STATUS.CONNECTED, model.name);
+        } catch (e) {
+            updateConnectionStatus(STATUS.DISCONNECTED, e.message);
+        }
+    }
+
+    // --- Action Button Events ---
+    mainActionButton.addEventListener('click', () => {
+        const model = MODEL_OPTIONS.find(m => m.id === selectedModelId);
+        const needsKey = ['google', 'openrouter'].includes(model.type);
+        const hasKey = needsKey ? (model.type === 'google' ? localStorage.getItem(STORAGE_KEYS.API_KEY) : localStorage.getItem(STORAGE_KEYS.OPENROUTER_KEY)) : true;
+        
+        if (needsKey && !hasKey) {
+            toggleConfig(true);
+        } else {
             createEvent();
         }
     });
-    
-    retryButton.addEventListener('click', () => {
-        initializeModel(modelSelect.value);
+
+    saveConfigButton.addEventListener('click', () => {
+        const model = MODEL_OPTIONS.find(m => m.id === selectedModelId);
+        if (model.type === 'google') localStorage.setItem(STORAGE_KEYS.API_KEY, apiKeyInput.value);
+        if (model.type === 'openrouter') localStorage.setItem(STORAGE_KEYS.OPENROUTER_KEY, apiKeyInput.value);
+        
+        showStatus('Configuration Saved', 'success');
+        toggleConfig(false);
+        updateButtonState();
+        initializeModel();
     });
-    
-    exampleItems.forEach(item => {
-        item.addEventListener('click', () => {
-            eventInput.value = item.getAttribute('data-example');
-            eventInput.focus();
+
+    // --- Other Events ---
+    cancelConfigButton.addEventListener('click', () => toggleConfig(false));
+    currentModelLabel.addEventListener('click', openTray);
+    closeTrayBtn.addEventListener('click', closeTray);
+    trayOverlay.addEventListener('click', closeTray);
+
+    dockItems.forEach(item => {
+        item.addEventListener('click', () => selectPattern(item.getAttribute('data-pattern')));
+    });
+
+    document.querySelectorAll('.chip').forEach(chip => {
+        chip.addEventListener('click', () => {
+            const text = chip.getAttribute('data-example');
+            eventInput.value = '';
+            let i = 0;
+            const interval = setInterval(() => {
+                eventInput.value += text[i++];
+                if (i >= text.length) clearInterval(interval);
+            }, 20);
         });
     });
-    
-    examplesHeader.addEventListener('click', toggleExamples);
-    themeToggle.addEventListener('click', toggleTheme);
-    
-    modelSelect.addEventListener('change', (e) => {
-        initializeModel(e.target.value);
-    });
 
-    saveApiKeyButton.addEventListener('click', () => {
-        const key = apiKeyInput.value.trim();
-        if (key) {
-            const currentModelId = modelSelect.value;
-            const modelConfig = MODEL_OPTIONS.find(m => m.id === currentModelId);
-            if (modelConfig && modelConfig.type === 'google') {
-                localStorage.setItem(STORAGE_KEYS.API_KEY, key);
-            } else if (modelConfig && modelConfig.type === 'openrouter') {
-                localStorage.setItem(STORAGE_KEYS.OPENROUTER_KEY, key);
-            }
-            
-            showStatus(UI_MESSAGES.SUCCESS.API_KEY_SAVED, 'success');
-            initializeModel(currentModelId);
-        }
+    themeToggle.addEventListener('click', () => {
+        const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', next);
+        localStorage.setItem(STORAGE_KEYS.THEME, next);
     });
-
-    // Functions
 
     function initTheme() {
-        const savedTheme = localStorage.getItem(STORAGE_KEYS.THEME);
-        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-        const theme = savedTheme || (prefersDark ? 'dark' : 'light');
-        document.documentElement.setAttribute('data-theme', theme);
-        updateThemeIcon(theme);
+        document.documentElement.setAttribute('data-theme', localStorage.getItem(STORAGE_KEYS.THEME) || 'dark');
     }
 
-    function updateThemeIcon(theme) {
-        themeToggle.innerHTML = `<span class="material-symbols-rounded">${theme === 'dark' ? 'light_mode' : 'dark_mode'}</span>`;
+    function updateConnectionStatus(status, info) {
+        statusDot.className = `dot ${status}`;
+        statusText.textContent = status === STATUS.CONNECTED ? `Ready: ${info}` : status === STATUS.CONNECTING ? 'Initializing...' : 'Offline';
+        magicBoxContainer.classList.toggle('active', status === STATUS.CONNECTED);
     }
 
-    function toggleTheme() {
-        const html = document.documentElement;
-        const currentTheme = html.getAttribute('data-theme');
-        const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-        html.setAttribute('data-theme', newTheme);
-        localStorage.setItem(STORAGE_KEYS.THEME, newTheme);
-        updateThemeIcon(newTheme);
-    }
-
-    function toggleExamples() {
-        isExamplesVisible = !isExamplesVisible;
-        exampleList.classList.toggle('hidden', !isExamplesVisible);
-        examplesToggle.innerHTML = `<span class="material-symbols-rounded">${isExamplesVisible ? 'expand_less' : 'expand_more'}</span>`;
-        localStorage.setItem(STORAGE_KEYS.EXAMPLES_VISIBLE, isExamplesVisible);
-    }
-
-    function loadModelsUI() {
-        modelSelect.innerHTML = '';
-        MODEL_OPTIONS.forEach(model => {
-            const option = document.createElement('option');
-            option.value = model.id;
-            const typeLabel = MODEL_TYPES[model.servingPattern].label;
-            option.textContent = `${model.name} (${typeLabel})`; 
-            modelSelect.appendChild(option);
-        });
-
-        const savedModelId = localStorage.getItem(STORAGE_KEYS.PREFERRED_MODEL_ID);
-        if (savedModelId && MODEL_OPTIONS.some(m => m.id === savedModelId)) {
-            modelSelect.value = savedModelId;
-        } else {
-            modelSelect.value = MODEL_OPTIONS[0].id;
-        }
-
-        initializeModel(modelSelect.value);
-    }
-
-    async function initializeModel(modelId) {
-        const modelConfig = MODEL_OPTIONS.find(m => m.id === modelId);
-        if (!modelConfig) return;
-
-        localStorage.setItem(STORAGE_KEYS.PREFERRED_MODEL_ID, modelId);
-        
-        // Update Icon
-        const typeInfo = MODEL_TYPES[modelConfig.servingPattern];
-        modelIconDisplay.textContent = typeInfo.icon;
-        modelIconDisplay.style.display = 'inline-block';
-        
-        updateConnectionStatus(STATUS.CONNECTING, `Connecting to ${modelConfig.name}...`);
-        
-        let apiKey = null;
-        if (modelConfig.type === 'google') {
-            apiKey = localStorage.getItem(STORAGE_KEYS.API_KEY);
-            apiKeyContainer.style.display = 'block';
-            apiKeyInput.placeholder = "Enter Google API Key";
-        } else if (modelConfig.type === 'openrouter') {
-             apiKey = localStorage.getItem(STORAGE_KEYS.OPENROUTER_KEY);
-             apiKeyContainer.style.display = 'block';
-             apiKeyInput.placeholder = "Enter OpenRouter Key";
-        } else {
-            apiKeyContainer.style.display = 'none';
-        }
-        
-        if (apiKey) apiKeyInput.value = apiKey;
-
-        try {
-            await parser.setModel(modelId, apiKey);
-            updateConnectionStatus(STATUS.CONNECTED, `${modelConfig.name}`);
-        } catch (error) {
-            console.error(error);
-            updateConnectionStatus(STATUS.DISCONNECTED, `Failed: ${error.message}`);
-        }
-    }
-
-    function updateConnectionStatus(status, message) {
-        statusIndicator.className = `status-indicator ${status}`;
-        modelNameDisplay.textContent = message || (status === STATUS.CONNECTED ? 'Connected' : 'Disconnected');
-        retryButton.style.display = status === STATUS.DISCONNECTED ? 'inline-block' : 'none';
-    }
-
-    function showStatus(message, type = '') {
-        statusMessage.textContent = message;
+    function showStatus(msg, type) {
+        statusMessage.textContent = msg;
         statusMessage.className = `status-message ${type}`;
-        if (type === 'success') {
-            setTimeout(() => {
-                if (statusMessage.textContent === message) {
-                    statusMessage.textContent = '';
-                    statusMessage.className = 'status-message';
-                }
-            }, 5000);
-        }
+        if (type === 'success') setTimeout(() => statusMessage.textContent = '', 3000);
     }
 
     async function createEvent() {
         const text = eventInput.value.trim();
-        if (!text) {
-            showStatus(UI_MESSAGES.ERRORS.NO_EVENT_DETAILS, 'error');
-            return;
-        }
-
-        createEventButton.disabled = true;
-        createEventButton.innerHTML = '<span class="material-symbols-rounded">hourglass_top</span> Processing...';
-        showStatus(UI_MESSAGES.STATUS.PROCESSING);
-
+        if (!text) return;
+        mainActionButton.disabled = true;
+        showStatus('Parsing details...', 'info');
         try {
             const url = await parser.parseEvent(text);
-            showStatus(UI_MESSAGES.SUCCESS.EVENT_CREATED, 'success');
+            showStatus('Success!', 'success');
             window.open(url, '_blank');
-        } catch (error) {
-            showStatus(error.message, 'error');
+        } catch (e) {
+            showStatus(e.message, 'error');
         } finally {
-            createEventButton.disabled = false;
-            createEventButton.innerHTML = '<span class="material-symbols-rounded">add</span> Create Event';
+            mainActionButton.disabled = false;
         }
     }
 });
