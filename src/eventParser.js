@@ -66,6 +66,99 @@ class EventParser {
         return Intl.DateTimeFormat().resolvedOptions().timeZone;
     }
 
+    async checkOllamaStatus() {
+        try {
+            const response = await fetch('http://localhost:11434/api/version');
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            const data = await response.json();
+            console.log('Ollama server version:', data.version);
+            return true;
+        } catch (error) {
+            console.error('Ollama server is not running:', error);
+            return false;
+        }
+    }
+    
+    async getAvailableModels() {
+        try {
+            const response = await fetch('http://localhost:11434/api/tags');
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            const data = await response.json();
+            // Add Ollama models to the list
+            const models = data.models.map(model => ({
+                name: model.name,
+                size: this.formatSize(model.size),
+                modified: new Date(model.modified_at).toLocaleDateString(),
+                type: 'ollama'
+            }));
+            
+            // Add Gemini model
+            models.push({
+                name: 'gemini-3.0-flash',
+                size: 'Cloud',
+                modified: new Date().toLocaleDateString(),
+                type: 'google'
+            });
+            
+            return models;
+        } catch (error) {
+            console.error('Error fetching available models:', error);
+            
+            // Return just the Gemini model if Ollama is not available
+            return [{
+                name: 'gemini-3.0-flash',
+                size: 'Cloud',
+                modified: new Date().toLocaleDateString(),
+                type: 'google'
+            }];
+        }
+    }
+    
+    formatSize(bytes) {
+        if (!bytes) return '';
+        const gb = bytes / (1024 * 1024 * 1024);
+        return `${gb.toFixed(1)}GB`;
+    }
+
+    parseOutputToObject(output) {
+        const lines = output.split('\n');
+        const result = {};
+        
+        for (const line of lines) {
+            const [key, ...valueParts] = line.split(':');
+            if (key && valueParts.length > 0) {
+                const value = valueParts.join(':').trim();
+                result[key.trim()] = value;
+            }
+        }
+
+        // Validate required fields
+        const requiredFields = ['text', 'dates'];
+        for (const field of requiredFields) {
+            if (!result[field]) {
+                throw new Error(`Missing required field: ${field}`);
+            }
+        }
+
+        // Ensure recur field has RRULE: prefix if present
+        if (result.recur && !result.recur.startsWith('RRULE:')) {
+            result.recur = `RRULE:${result.recur}`;
+        }
+
+        return {
+            text: result.text,
+            dates: result.dates,
+            details: result.details || '',
+            location: result.location || '',
+            recur: result.recur || ''
+        };
+    }
+
     createGoogleCalendarUrl(details) {
         const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
         

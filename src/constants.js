@@ -1,3 +1,7 @@
+export const MODELS = {
+    GEMINI: 'gemini-3.0-flash'
+};
+
 export const STATUS = {
     DISCONNECTED: 'disconnected',
     CONNECTING: 'connecting',
