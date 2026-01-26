@@ -6,9 +6,21 @@ export default defineConfig({
   root: 'src',
   build: {
     outDir: '../dist',
-    emptyOutDir: true
+    emptyOutDir: true,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'transformers': ['@xenova/transformers'],
+        }
+      }
+    }
   },
   base: '/gcal-quick-add/',
+  test: {
+    globals: true,
+    environment: 'jsdom',
+    include: ['../tests/**/*.{test,spec}.js'],
+  },
   plugins: [
     VitePWA({
       registerType: 'autoUpdate',

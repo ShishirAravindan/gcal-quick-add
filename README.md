@@ -1,57 +1,73 @@
 # GCal Quick Add
 
-A Progressive Web App that allows you to quickly add events to Google Calendar using natural language processing. Simply describe your event in plain English, and the app will create it in your calendar.
+A Progressive Web App that parses natural language into Google Calendar events. Describe your event in plain English, and the app generates a calendar link.
 
 ## Features
 
-- Natural language processing for event creation
-- Support for recurring events
-- Progressive Web App (PWA) for mobile support
-- Dark/Light theme support
-- Multiple LLM model support (Google Gemini and Ollama)
-- Keyboard shortcuts for quick event creation
+- **Natural language parsing** for event creation (dates, times, recurrence)
+- **Three serving strategies**: Cloud APIs, Browser inference, Local servers
+- **PWA support** for mobile installation
+- **Solarized dark/light themes**
+
+## Serving Strategies
+
+The app supports three model serving strategies, switchable via the UI dock:
+
+| Strategy | Examples | Trade-off |
+|----------|----------|-----------|
+| **Cloud** | Gemini, OpenRouter | Highest quality, requires API key |
+| **Browser** | Transformers.js (LaMini-T5) | Private, no setup, runs in-tab |
+| **Local** | Ollama, LM Studio | Quality + privacy, requires local server |
 
 ## Development
 
-1. Clone the repository:
 ```bash
+# Clone and install
 git clone https://github.com/yourusername/gcal-quick-add.git
 cd gcal-quick-add
-```
-
-2. Install dependencies:
-```bash
 npm install
-```
 
-3. Start the development server:
-```bash
+# Start dev server
 npm run dev
 ```
 
-## Deployment
+## Running Tests
 
-The app is automatically deployed to GitHub Pages when changes are pushed to the main branch. The deployment process:
+```bash
+# Unit tests (deterministic logic)
+npm run test:unit
 
-1. Builds the application using Vite
-2. Generates PWA assets and service workers
-3. Deploys to GitHub Pages
+# E2E UI tests
+npm run test:e2e
 
-To manually trigger a deployment, you can:
+# Conformance tests (requires TEST_PROVIDERS)
+TEST_PROVIDERS=browser npm run test:conformance
 
-1. Go to the Actions tab in your GitHub repository
-2. Select the "Deploy to GitHub Pages" workflow
-3. Click "Run workflow"
+# Benchmark with report
+TEST_PROVIDERS=browser npm run bench
+
+# Local benchmark (auto-starts Ollama)
+TEST_PROVIDERS=ollama TEST_RUN_OLLAMA=true npm run bench
+```
+
+See [docs/testing-harness.md](docs/testing-harness.md) for full test matrix and env flags.
 
 ## Configuration
 
-To use the Google Gemini model, you'll need to:
+**Cloud (Gemini):**
+1. Get an API key from [Google AI Studio](https://aistudio.google.com/)
+2. Enter the key in the app's settings
 
-1. Get an API key from Google AI Studio
-2. Enter the API key in the app's settings
+**Local (Ollama):**
+1. Install [Ollama](https://ollama.ai/)
+2. Run `ollama serve`
+3. Select an Ollama model in the app
 
-For Ollama models:
+## Deployment
 
-1. Install Ollama locally
-2. Start the Ollama server
-3. Select an Ollama model in the app's settings
+Auto-deploys to GitHub Pages on push to `main`. Manual trigger available via Actions tab.
+
+## Documentation
+
+- [Architecture](docs/architecture.md) — System design and providers
+- [Testing Harness](docs/testing-harness.md) — Test modes and env flags

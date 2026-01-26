@@ -6,7 +6,20 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "echo \"No default test. Use npm run test:unit or a conformance/bench script.\" && exit 1",
+    "test:unit": "vitest run tests/unit",
+    "test:watch": "vitest tests/unit",
+    "test:ui": "vitest --ui tests/unit",
+    "test:conformance": "vitest run tests/conformance/conformance.test.js",
+    "test:conformance:local": "TEST_PROVIDERS=ollama,lmstudio vitest run tests/conformance/conformance.test.js",
+    "test:conformance:cloud": "TEST_PROVIDERS=gemini,openrouter vitest run tests/conformance/conformance.test.js",
+    "test:conformance:browser": "TEST_PROVIDERS=browser vitest run tests/conformance/conformance.test.js",
+    "test:e2e": "playwright test",
+    "bench": "node tests/conformance/benchmark.js",
+    "bench:local": "TEST_PROVIDERS=ollama,lmstudio node tests/conformance/benchmark.js",
+    "bench:cloud": "TEST_PROVIDERS=gemini,openrouter node tests/conformance/benchmark.js",
+    "bench:browser": "TEST_PROVIDERS=browser node tests/conformance/benchmark.js"
   },
   "keywords": [
     "calendar",
@@ -19,13 +32,21 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@langchain/core": "^0.3.0",
-    "@langchain/google-genai": "^0.1.10",
-    "@langchain/ollama": "^0.1.0",
-    "langchain": "^0.3.0"
+    "@langchain/core": "^1.1.12",
+    "@langchain/google-genai": "^2.1.7",
+    "@langchain/openai": "^0.3.0",
+    "@xenova/transformers": "^2.17.2",
+    "langchain": "^0.3.0",
+    "zod": "^4.3.5"
   },
   "devDependencies": {
+    "@playwright/test": "^1.57.0",
+    "@vitest/ui": "^4.0.16",
+    "dotenv": "^17.2.3",
+    "jsdom": "^27.4.0",
+    "node-fetch": "^3.3.2",
     "vite": "^5.1.4",
-    "vite-plugin-pwa": "^0.19.0"
+    "vite-plugin-pwa": "^0.19.0",
+    "vitest": "^4.0.16"
   }
 }
