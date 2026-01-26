@@ -20,7 +20,7 @@ test.describe('Quick Add E2E', () => {
     const glowColor = await page.evaluate(() => 
       getComputedStyle(document.documentElement).getPropertyValue('--pattern-glow').trim()
     );
-    expect(glowColor).toBe('#859900'); // --color-browser
+    expect(glowColor).toBe('#d33682'); // --color-browser (Solarized Magenta)
   });
 
   test('should handle the 3D flip for API key configuration', async ({ page }) => {

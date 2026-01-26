@@ -10,9 +10,9 @@
   --base3: #fdf6e3;
   
   /* Serving Pattern Colors */
-  --color-cloud: #268bd2;     /* Blue */
-  --color-browser: #859900;   /* Green */
-  --color-device: #cb4b16;    /* Orange */
+  --color-cloud: #cb4b16;     /* Solarized Orange */
+  --color-browser: #d33682;   /* Solarized Magenta */
+  --color-local: #6c71c4;     /* Solarized Violet */
   
   --primary-color: var(--base02);
   --background: var(--base3);
@@ -107,12 +107,12 @@ header {
 
 .magic-box-container.active::before {
   opacity: 1;
-  animation: rotate-glow 3s linear infinite;
+  animation: subtle-glow 3s ease-in-out infinite;
 }
 
-@keyframes rotate-glow {
-  0% { filter: hue-rotate(0deg); }
-  100% { filter: hue-rotate(360deg); }
+@keyframes subtle-glow {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
 }
 
 .magic-box {
@@ -240,6 +240,15 @@ textarea {
   transform: translateY(-2px);
 }
 
+.primary-button.loading {
+  opacity: 0.7;
+  cursor: wait;
+}
+
+.primary-button:disabled {
+  pointer-events: none;
+}
+
 .api-input {
   flex: 1;
   background: var(--background);
@@ -300,8 +309,8 @@ textarea {
   background: var(--base01);
 }
 
-.dot.connected { background: var(--color-browser); }
-.dot.connecting { background: var(--orange); animation: pulse 1s infinite; }
+.dot.connected { background: #859900; } /* Solarized Green - universal ready */
+.dot.connecting { background: #b58900; animation: pulse 1s infinite; } /* Solarized Yellow */
 
 @keyframes pulse {
   0% { opacity: 0.5; }
@@ -473,4 +482,70 @@ textarea {
 .tray-overlay.visible {
   opacity: 1;
   pointer-events: auto;
-} 
+}
+
+/* --- Toast Notifications --- */
+.toast-container {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.toast {
+  background: var(--card-background);
+  color: var(--text-color);
+  padding: 12px 20px;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  pointer-events: auto;
+  animation: toast-in 0.3s ease-out;
+  border-left: 4px solid var(--base01);
+}
+
+.toast.success {
+  border-left-color: #859900; /* Solarized Green */
+}
+
+.toast.error {
+  border-left-color: #dc322f; /* Solarized Red */
+}
+
+.toast.info {
+  border-left-color: #268bd2; /* Solarized Blue */
+}
+
+.toast.hiding {
+  animation: toast-out 0.3s ease-in forwards;
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes toast-out {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+}

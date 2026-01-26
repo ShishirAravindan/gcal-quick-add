@@ -5,9 +5,9 @@ export const STATUS = {
 };
 
 export const MODEL_TYPES = {
-    CLOUD: { icon: 'cloud', label: 'Cloud API' },
-    BROWSER: { icon: 'laptop', label: 'In-Browser' },
-    DEVICE: { icon: 'devices', label: 'On-Device' }
+    CLOUD: { icon: 'cloud', label: 'Cloud' },
+    BROWSER: { icon: 'laptop', label: 'Browser' },
+    LOCAL: { icon: 'terminal', label: 'Local' }
 };
 
 export const MODEL_OPTIONS = [
@@ -37,8 +37,8 @@ export const MODEL_OPTIONS = [
         id: 'ollama-llama3',
         name: 'Ollama (Llama 3)',
         type: 'ollama',
-        servingPattern: 'DEVICE',
-        modelName: 'llama3',
+        servingPattern: 'LOCAL',
+        modelName: 'llama3.2-3b',
         baseUrl: 'http://localhost:11434/v1',
         description: 'Local inference via Ollama'
     },
@@ -46,7 +46,7 @@ export const MODEL_OPTIONS = [
         id: 'lmstudio-local',
         name: 'LM Studio (Local)',
         type: 'lmstudio',
-        servingPattern: 'DEVICE',
+        servingPattern: 'LOCAL',
         modelName: 'local-model',
         baseUrl: 'http://localhost:1234/v1',
         description: 'Local inference via LM Studio'

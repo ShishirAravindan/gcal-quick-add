@@ -21,7 +21,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Status Elements
     const statusDot = document.getElementById('statusDot');
     const statusText = document.getElementById('statusText');
-    const statusMessage = document.getElementById('statusMessage');
+    const toastContainer = document.getElementById('toastContainer');
     const themeToggle = document.getElementById('themeToggle');
     
     // Pattern & Pill
@@ -60,8 +60,8 @@ document.addEventListener('DOMContentLoaded', () => {
             item.classList.toggle('selected', item.getAttribute('data-pattern') === pattern);
         });
 
-        // Accent Color
-        const colors = { 'CLOUD': '#268bd2', 'BROWSER': '#859900', 'DEVICE': '#cb4b16' };
+        // Accent Color (Solarized: Orange, Magenta, Violet)
+        const colors = { 'CLOUD': '#cb4b16', 'BROWSER': '#d33682', 'LOCAL': '#6c71c4' };
         document.documentElement.style.setProperty('--pattern-glow', colors[pattern]);
         
         // Ensure selected model belongs to this pattern
@@ -205,7 +205,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (model.type === 'google') localStorage.setItem(STORAGE_KEYS.API_KEY, apiKeyInput.value);
         if (model.type === 'openrouter') localStorage.setItem(STORAGE_KEYS.OPENROUTER_KEY, apiKeyInput.value);
         
-        showStatus('Configuration Saved', 'success');
+        showToast('Configuration saved', 'success');
         toggleConfig(false);
         updateButtonState();
         initializeModel();
@@ -219,6 +219,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     dockItems.forEach(item => {
         item.addEventListener('click', () => selectPattern(item.getAttribute('data-pattern')));
+    });
+
+    // Enter key to submit
+    eventInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            mainActionButton.click();
+        }
     });
 
     document.querySelectorAll('.chip').forEach(chip => {
@@ -249,25 +257,47 @@ document.addEventListener('DOMContentLoaded', () => {
         magicBoxContainer.classList.toggle('active', status === STATUS.CONNECTED);
     }
 
-    function showStatus(msg, type) {
-        statusMessage.textContent = msg;
-        statusMessage.className = `status-message ${type}`;
-        if (type === 'success') setTimeout(() => statusMessage.textContent = '', 3000);
+    function showToast(msg, type = 'info', duration = 4000) {
+        const toast = document.createElement('div');
+        toast.className = `toast ${type}`;
+        
+        const icons = {
+            success: 'check_circle',
+            error: 'error',
+            info: 'info'
+        };
+        
+        toast.innerHTML = `
+            <span class="material-symbols-rounded" style="font-size: 20px;">${icons[type] || 'info'}</span>
+            <span>${msg}</span>
+        `;
+        
+        toastContainer.appendChild(toast);
+        
+        setTimeout(() => {
+            toast.classList.add('hiding');
+            setTimeout(() => toast.remove(), 300);
+        }, duration);
     }
 
     async function createEvent() {
         const text = eventInput.value.trim();
         if (!text) return;
+        
+        // Loading state
         mainActionButton.disabled = true;
-        showStatus('Parsing details...', 'info');
+        mainActionButton.classList.add('loading');
+        buttonText.textContent = 'Processing ...';
+        
         try {
             const url = await parser.parseEvent(text);
-            showStatus('Success!', 'success');
             window.open(url, '_blank');
         } catch (e) {
-            showStatus(e.message, 'error');
+            showToast(e.message, 'error', 6000);
         } finally {
             mainActionButton.disabled = false;
+            mainActionButton.classList.remove('loading');
+            updateButtonState(); // Restore button text
         }
     }
 });
