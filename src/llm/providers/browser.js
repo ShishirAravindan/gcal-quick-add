@@ -38,20 +38,40 @@ export class BrowserProvider extends ModelInterface {
 
     async generateStructured(prompt, schema) {
         // Transformers.js doesn't natively support structured output like cloud APIs.
-        // We append a JSON instruction and parse the result.
-        const jsonPrompt = `${prompt}\n\nIMPORTANT: Return ONLY raw JSON matching this schema: ${JSON.stringify(schema)}`;
+        // Use a simplified prompt with explicit example for small models.
+        const jsonPrompt = `${prompt}
+
+Output JSON only with these fields:
+- text: event title
+- dates: start/end in format YYYYMMDDTHHMMSS/YYYYMMDDTHHMMSS  
+- details: description (optional)
+- location: place (optional)
+
+Example output:
+{"text":"Dinner with Alex","dates":"20260127T190000/20260127T210000","details":"","location":""}
+
+JSON:`;
+        
         const text = await this.generate(jsonPrompt);
         
         try {
             const jsonStart = text.indexOf('{');
             const jsonEnd = text.lastIndexOf('}');
             if (jsonStart >= 0 && jsonEnd > jsonStart) {
-                return JSON.parse(text.substring(jsonStart, jsonEnd + 1));
+                const parsed = JSON.parse(text.substring(jsonStart, jsonEnd + 1));
+                // Ensure required fields exist
+                return {
+                    text: parsed.text || 'Untitled Event',
+                    dates: parsed.dates || '',
+                    details: parsed.details || '',
+                    location: parsed.location || '',
+                    recur: parsed.recur || ''
+                };
             }
             return JSON.parse(text);
         } catch (e) {
             console.error("Failed to parse browser model structured output:", text);
-            throw new Error("Model failed to return valid JSON");
+            throw new Error("Browser model failed to parse event. Try Cloud or Local for better accuracy.");
         }
     }
     
