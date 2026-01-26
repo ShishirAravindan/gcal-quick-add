@@ -7,11 +7,19 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "test:ui": "vitest --ui",
+    "test": "echo \"No default test. Use npm run test:unit or a conformance/bench script.\" && exit 1",
+    "test:unit": "vitest run tests/unit",
+    "test:watch": "vitest tests/unit",
+    "test:ui": "vitest --ui tests/unit",
+    "test:conformance": "vitest run tests/conformance/conformance.test.js",
+    "test:conformance:local": "TEST_PROVIDERS=ollama,lmstudio vitest run tests/conformance/conformance.test.js",
+    "test:conformance:cloud": "TEST_PROVIDERS=gemini,openrouter vitest run tests/conformance/conformance.test.js",
+    "test:conformance:browser": "TEST_PROVIDERS=browser vitest run tests/conformance/conformance.test.js",
     "test:e2e": "playwright test",
-    "bench": "node tests/conformance/benchmark.js"
+    "bench": "node tests/conformance/benchmark.js",
+    "bench:local": "TEST_PROVIDERS=ollama,lmstudio node tests/conformance/benchmark.js",
+    "bench:cloud": "TEST_PROVIDERS=gemini,openrouter node tests/conformance/benchmark.js",
+    "bench:browser": "TEST_PROVIDERS=browser node tests/conformance/benchmark.js"
   },
   "keywords": [
     "calendar",
@@ -34,6 +42,7 @@
   "devDependencies": {
     "@playwright/test": "^1.57.0",
     "@vitest/ui": "^4.0.16",
+    "dotenv": "^17.2.3",
     "jsdom": "^27.4.0",
     "node-fetch": "^3.3.2",
     "vite": "^5.1.4",

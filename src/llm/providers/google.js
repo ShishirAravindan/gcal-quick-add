@@ -15,8 +15,9 @@ export class GoogleProvider extends ModelInterface {
         
         try {
             this.status = 'connecting';
+            const modelName = this.config.modelName || this.config.model || 'gemini-3-flash-preview';
             this.model = new ChatGoogleGenerativeAI({
-                modelName: this.config.modelName || 'gemini-3-flash-preview',
+                model: modelName,
                 apiKey: this.config.apiKey,
                 temperature: 0,
             });
