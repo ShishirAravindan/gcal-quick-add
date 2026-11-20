@@ -1,17 +1,17 @@
 # GCal Quick Add
 
-A Progressive Web App that parses natural language into Google Calendar events. Describe your event in plain English, and the app generates a calendar link.
+A Progressive Web App that turns an event description into a prefilled Google Calendar event. Review, edit, and save it in Calendar.
 
 ## Features
 
 - **Natural language parsing** for event creation (dates, times, recurrence)
 - **Three serving strategies**: Cloud APIs, Browser inference, Local servers
 - **PWA support** for mobile installation
-- **Solarized dark/light themes**
+- **Light and dark appearance** follows the system setting
 
 ## Serving Strategies
 
-The app supports three model serving strategies, switchable via the UI dock:
+The app supports three model serving strategies, switchable under **Settings → Model**.
 
 | Strategy | Examples | Trade-off |
 |----------|----------|-----------|
@@ -56,7 +56,7 @@ See [docs/testing-harness.md](docs/testing-harness.md) for full test matrix and 
 
 **Cloud (Gemini):**
 1. Get an API key from [Google AI Studio](https://aistudio.google.com/)
-2. Enter the key in the app's settings
+2. Save the key under **Settings → Connection**, then choose a Gemini model
 
 **Local (Ollama):**
 1. Install [Ollama](https://ollama.ai/)

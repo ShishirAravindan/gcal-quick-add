@@ -15,15 +15,13 @@ export class GoogleProvider extends ModelInterface {
         
         try {
             this.status = 'connecting';
-            const modelName = this.config.modelName || this.config.model || 'gemini-3-flash-preview';
+            const modelName = this.config.modelName || this.config.model;
+            if (!modelName) throw new Error("Choose a Google model first");
             this.model = new ChatGoogleGenerativeAI({
                 model: modelName,
                 apiKey: this.config.apiKey,
-                temperature: 0,
             });
 
-            // Quick connectivity check
-            await this.model.invoke("hi");
             this.status = 'connected';
         } catch (error) {
             this.status = 'disconnected';

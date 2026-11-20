@@ -1,7 +1,3 @@
-export const MODELS = {
-    GEMINI: 'gemini-3.0-flash'
-};
-
 export const STATUS = {
     DISCONNECTED: 'disconnected',
     CONNECTING: 'connecting',
@@ -16,18 +12,11 @@ export const MODEL_TYPES = {
 
 export const MODEL_OPTIONS = [
     {
-        id: 'gemini-3-flash-preview',
-        name: 'Gemini 3 Flash (Preview)',
+        id: 'google-ai-studio',
+        name: 'Google AI Studio',
         type: 'google',
         servingPattern: 'CLOUD',
-        description: 'Fastest Google Cloud Model'
-    },
-    {
-        id: 'gemini-3-pro-preview',
-        name: 'Gemini 3 Pro (Preview)',
-        type: 'google',
-        servingPattern: 'CLOUD',
-        description: 'High Intelligence Google Cloud Model'
+        description: 'Models from the Gemini API catalog'
     },
     {
         id: 'browser-t5',
@@ -67,10 +56,10 @@ export const MODEL_OPTIONS = [
 ];
 
 export const STORAGE_KEYS = {
-    THEME: 'gcal_theme',
     API_KEY: 'gcal_api_key', 
     OPENROUTER_KEY: 'gcal_openrouter_key',
     PREFERRED_MODEL_ID: 'gcal_preferred_model_id',
+    GOOGLE_MODEL_ID: 'gcal_google_model_id',
     EXAMPLES_VISIBLE: 'gcal_examples_visible'
 };
 

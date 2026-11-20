@@ -7,7 +7,7 @@ const PROVIDER_DEFS = {
     },
     gemini: {
         label: 'Google Cloud',
-        modelId: 'gemini-3-flash-preview',
+        modelId: 'google-ai-studio',
         envKey: 'TEST_GEMINI_KEY'
     },
     openrouter: {
@@ -46,7 +46,7 @@ export function getProviderPlans() {
         .filter(name => PROVIDER_DEFS[name])
         .map(name => {
             const def = PROVIDER_DEFS[name];
-            const modelConfig = findModelConfig(def.modelId);
+            let modelConfig = findModelConfig(def.modelId);
             if (!modelConfig) {
                 return {
                     id: name,
@@ -57,6 +57,9 @@ export function getProviderPlans() {
                 };
             }
 
+            if (name === 'gemini') {
+                modelConfig = { ...modelConfig, modelName: process.env.TEST_GEMINI_MODEL || 'gemini-flash-latest' };
+            }
             const apiKey = def.envKey ? process.env[def.envKey] : null;
             if (def.envKey && !apiKey) {
                 return {
@@ -71,7 +74,7 @@ export function getProviderPlans() {
             return {
                 id: name,
                 label: def.label,
-                modelId: def.modelId,
+                modelId: name === 'gemini' ? modelConfig.modelName : def.modelId,
                 modelConfig,
                 apiKey,
                 localType: def.localType || null,

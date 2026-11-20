@@ -74,6 +74,9 @@ Browser is treated like cloud: opt-in only.
 - `TEST_GEMINI_KEY`
   - Required when `gemini` is enabled.
 
+- `TEST_GEMINI_MODEL`
+  - Defaults to Google's `gemini-flash-latest` alias. Set an exact model ID for repeatable comparisons.
+
 - `TEST_OPENROUTER_KEY`
   - Required when `openrouter` is enabled.
 

@@ -55,7 +55,7 @@ if (requested.length === 0) {
                         }
 
                         try {
-                            await parser.setModel(plan.modelId, plan.apiKey);
+                            await parser.setModel(plan.modelConfig.id, plan.apiKey, plan.modelConfig.modelName);
                         } catch (e) {
                             providerEval.status = 'error';
                             providerEval.reason = `Model init failed: ${e.message}`;
