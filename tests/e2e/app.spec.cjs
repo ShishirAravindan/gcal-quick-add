@@ -7,7 +7,10 @@ test.describe('Quick Add E2E', () => {
   });
 
   test('should display the main UI correctly', async ({ page }) => {
-    await expect(page.getByRole('heading', { name: 'Quick Add', level: 1 })).toBeVisible();
+    const logo = page.getByRole('heading', { name: 'Quick Add', level: 1 }).locator('img');
+    await expect.poll(() => logo.evaluate(image => image.naturalWidth)).toBe(192);
+    await expect(logo).toHaveCSS('width', '80px');
+    await expect(page.locator('link[rel="icon"]')).toHaveAttribute('href', /\/favicon\.png$/);
     await expect(page.locator('#eventInput')).toBeVisible();
     await expect(page.locator('#mainActionButton')).toBeVisible();
     const labelFont = await page.locator('label[for="eventInput"]').evaluate(element => getComputedStyle(element).fontFamily);
@@ -145,6 +148,9 @@ test.describe('Phone composer', () => {
     await page.setViewportSize({ width: 320, height: 568 });
     await expect(calendar).toBeInViewport();
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(320);
+    const logo = await page.locator('.app-logo img').boundingBox();
+    expect(logo.width).toBe(56);
+    expect(logo.x + logo.width / 2).toBeCloseTo(160, 0);
     await expect(input).toHaveValue(description);
     await expect(page.locator('.app-header button')).toHaveCount(1);
     await page.getByRole('button', { name: 'Settings', exact: true }).tap();

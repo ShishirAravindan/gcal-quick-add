@@ -61,17 +61,21 @@ button:disabled { cursor: default; opacity: .65; }
 }
 
 .app-header {
-    display: flex;
+    display: grid;
+    grid-template-columns: minmax(44px, 1fr) auto minmax(44px, 1fr);
     align-items: center;
-    justify-content: space-between;
-    gap: 8px;
     margin-bottom: 20px;
 }
 
-.app-header h1 {
-    font: 400 clamp(1.8rem, 6vw, 3.3rem)/1 Georgia, serif;
-    letter-spacing: -.04em;
+.app-logo { grid-column: 2; }
+
+.app-logo img {
+    display: block;
+    width: clamp(56px, 10vw, 80px);
+    height: auto;
 }
+
+#settingsButton { grid-column: 3; justify-self: end; }
 
 h1, h2, p { margin: 0; }
 
