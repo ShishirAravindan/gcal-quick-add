@@ -16,6 +16,31 @@ Remember:
 2. Include both start and end time in 'dates' separated by '/'
 3. For recurring events, the 'recur' field MUST start with 'RRULE:' prefix.`;
 
+const invalidDatesMessage = 'The model returned an invalid date or time. Check the event details and try again.';
+
+function readCalendarDate(value) {
+    const parts = /^(\d{4})(\d{2})(\d{2})(?:T(\d{2})(\d{2})(\d{2})(Z)?)?$/.exec(value);
+    if (!parts) throw new Error(invalidDatesMessage);
+
+    const [, year, month, day, hour, minute, second, zone] = parts;
+    const isoDate = year + '-' + month + '-' + day;
+    const isoTime = hour ? hour + ':' + minute + ':' + second : '00:00:00';
+    // Use UTC for comparison so floating times are validated as written.
+    const date = new Date(isoDate + 'T' + isoTime + 'Z');
+    if (!Number.isFinite(date.getTime()) || !date.toISOString().startsWith(isoDate + 'T' + isoTime)) {
+        throw new Error(invalidDatesMessage);
+    }
+    return { date, format: hour ? (zone ? 'utc' : 'local') : 'allDay' };
+}
+
+function validateEventDates(dates) {
+    if (typeof dates !== 'string') throw new Error(invalidDatesMessage);
+    const range = dates.replace(/[-:]/g, '').split('/');
+    if (range.length !== 2) throw new Error(invalidDatesMessage);
+    const [start, end] = range.map(readCalendarDate);
+    if (start.format !== end.format || start.date >= end.date) throw new Error(invalidDatesMessage);
+}
+
 class EventParser {
     constructor() {
         this.currentModel = null;
@@ -207,6 +232,10 @@ class EventParser {
         
         // Use Structured Output
         const details = await this.currentModel.generateStructured(formattedPrompt, EventDetailsSchema);
+        if (typeof details?.text !== 'string' || !details.text.trim()) {
+            throw new Error('The model returned an event without a title. Try again with a short description.');
+        }
+        validateEventDates(details.dates);
         
         // Ensure recur field has RRULE: prefix if present and not already there
         if (details.recur && !details.recur.startsWith('RRULE:')) {
