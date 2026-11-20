@@ -1,303 +1,334 @@
 import EventParser from './eventParser.js';
-import { MODEL_OPTIONS, STORAGE_KEYS, UI_MESSAGES, STATUS } from './constants.js';
+import { MODEL_OPTIONS, MODEL_TYPES, STORAGE_KEYS } from './constants.js';
+import { listGoogleModels } from './llm/googleModels.js';
 
-document.addEventListener('DOMContentLoaded', () => {
-    // DOM Elements
-    const eventInput = document.getElementById('eventInput');
-    const magicBoxContainer = document.getElementById('magicBoxContainer');
-    const mainActionButton = document.getElementById('mainActionButton');
-    const buttonText = document.getElementById('buttonText');
-    const actionFlipCard = document.getElementById('actionFlipCard');
-    
-    // Config Elements
-    const apiKeyInput = document.getElementById('apiKeyInput');
-    const baseUrlInput = document.getElementById('baseUrlInput');
-    const saveConfigButton = document.getElementById('saveConfig');
-    const cancelConfigButton = document.getElementById('cancelConfig');
-    const keyGroup = document.getElementById('keyGroup');
-    const urlGroup = document.getElementById('urlGroup');
-    const openConfigBtn = document.getElementById('openConfig');
-    
-    // Status Elements
-    const statusDot = document.getElementById('statusDot');
-    const statusText = document.getElementById('statusText');
-    const toastContainer = document.getElementById('toastContainer');
-    const themeToggle = document.getElementById('themeToggle');
-    
-    // Pattern & Pill
-    const enginePill = document.getElementById('enginePill');
-    const currentModelLabel = document.getElementById('currentModelLabel');
-    const dockItems = document.querySelectorAll('.dock-item');
-    
-    // Tray Elements
-    const modelTray = document.getElementById('modelTray');
-    const trayOverlay = document.getElementById('trayOverlay');
-    const trayList = document.getElementById('trayList');
-    const closeTrayBtn = document.getElementById('closeTray');
+const byId = id => document.getElementById(id);
+const eventForm = byId('eventForm');
+const eventInput = byId('eventInput');
+const calendarButton = byId('mainActionButton');
+const calendarActionLabel = byId('calendarActionLabel');
+const eventError = byId('eventError');
+const calendarStatus = byId('calendarStatus');
+const modelDialog = byId('modelTray');
+const settingsButton = byId('settingsButton');
+const providerChoices = byId('providerChoices');
+const providerStatus = byId('providerStatus');
+const modelConfig = byId('modelConfig');
+const keyForm = byId('keyForm');
+const apiKeyInput = byId('apiKeyInput');
+const editKey = byId('editKey');
+const googlePicker = byId('googlePicker');
+const googleModelChoices = byId('googleModelChoices');
+const googleModelSummary = byId('googleModelSummary');
+const googleModelList = byId('googleModelList');
+const catalogStatus = byId('googleCatalogStatus');
+const refreshGoogleButton = byId('refreshGoogleModels');
+const desktopKeyboard = matchMedia('(min-width: 581px) and (hover: hover) and (pointer: fine)');
 
-    // State
-    const parser = new EventParser();
-    let currentPattern = 'CLOUD';
-    let selectedModelId = localStorage.getItem(STORAGE_KEYS.PREFERRED_MODEL_ID) || MODEL_OPTIONS[0].id;
-    let isConfiguring = false;
+let parser;
+let modelAttempt = 0;
+let catalogRequest;
+let googleModels = null;
+let catalogMessage = '';
+let modelLoading = false;
+let openingCalendar = false;
+let inputRevision = 0;
 
-    // --- Initialize ---
-    initTheme();
-    // Validate selected model matches pattern
-    const initialModel = MODEL_OPTIONS.find(m => m.id === selectedModelId);
-    if (initialModel) {
-        currentPattern = initialModel.servingPattern;
-    }
-    selectPattern(currentPattern, false); // Don't re-initialize immediately, let selectPattern do it
+const savedProvider = localStorage.getItem(STORAGE_KEYS.PREFERRED_MODEL_ID);
+let preferredGoogleModel = localStorage.getItem(STORAGE_KEYS.GOOGLE_MODEL_ID);
+if (savedProvider?.startsWith('gemini-') && !preferredGoogleModel) {
+    preferredGoogleModel = savedProvider;
+    localStorage.setItem(STORAGE_KEYS.GOOGLE_MODEL_ID, savedProvider);
+}
+let provider = MODEL_OPTIONS.find(model => model.id === savedProvider) ?? MODEL_OPTIONS[0];
 
-    // --- UI Logic ---
+const providerAppearance = {
+    google: { icon: 'gemini', label: 'Google AI Studio' },
+    openrouter: { icon: 'openrouter', label: 'OpenRouter' },
+    browser: { icon: 'browser', label: 'Browser' },
+    ollama: { icon: 'ollama', label: 'Ollama' },
+    lmstudio: { icon: 'lmstudio', label: 'LM Studio' }
+};
 
-    function selectPattern(pattern, shouldInit = true) {
-        currentPattern = pattern;
-        
-        // Update Dock UI
-        dockItems.forEach(item => {
-            item.classList.toggle('selected', item.getAttribute('data-pattern') === pattern);
-        });
+for (const [patterns, heading] of [
+    [['CLOUD'], MODEL_TYPES.CLOUD.label],
+    [['BROWSER', 'LOCAL'], 'On this device']
+]) {
+    const group = document.createElement('fieldset');
+    const options = MODEL_OPTIONS.filter(model => patterns.includes(model.servingPattern));
+    group.className = 'provider-group';
+    group.innerHTML = `
+        <legend>${heading}</legend>
+        <div class="provider-grid ${options.length === 3 ? 'three-providers' : ''}">
+            ${options.map(model => {
+                const { icon, label } = providerAppearance[model.type];
+                return `<label class="provider-option">
+                    <input type="radio" class="sr-only" name="provider" value="${model.id}" ${model === provider ? 'checked' : ''}>
+                    <span class="provider-card">
+                        <svg class="icon provider-icon" aria-hidden="true"><use href="#icon-${icon}"/></svg>
+                        <span>${label}</span>
+                        <svg class="icon provider-check" aria-hidden="true"><use href="#icon-check"/></svg>
+                    </span>
+                </label>`;
+            }).join('')}
+        </div>`;
+    providerChoices.append(group);
+}
 
-        // Accent Color (Solarized: Orange, Magenta, Violet)
-        const colors = { 'CLOUD': '#cb4b16', 'BROWSER': '#d33682', 'LOCAL': '#6c71c4' };
-        document.documentElement.style.setProperty('--pattern-glow', colors[pattern]);
-        
-        // Ensure selected model belongs to this pattern
-        const currentModel = MODEL_OPTIONS.find(m => m.id === selectedModelId);
-        if (!currentModel || currentModel.servingPattern !== pattern) {
-            // Pick first model for this pattern
-            selectedModelId = MODEL_OPTIONS.find(m => m.servingPattern === pattern).id;
+function keyStorage() {
+    if (provider.type === 'google') return STORAGE_KEYS.API_KEY;
+    if (provider.type === 'openrouter') return STORAGE_KEYS.OPENROUTER_KEY;
+    return null;
+}
+
+function providerKey() {
+    const storage = keyStorage();
+    return storage ? localStorage.getItem(storage) : null;
+}
+
+function selectedGoogleModel() {
+    return googleModels?.find(model => model.id === preferredGoogleModel);
+}
+
+function renderCalendarAction() {
+    const needsKey = keyStorage() && !providerKey();
+    const needsModel = provider.type === 'google' && !selectedGoogleModel();
+    calendarButton.disabled = openingCalendar || (modelLoading && !needsModel);
+    calendarActionLabel.textContent = openingCalendar ? 'Opening Calendar…'
+        : needsKey ? 'Set up model'
+        : needsModel ? 'Choose model'
+        : modelLoading ? 'Connecting…'
+        : 'Open in Calendar';
+}
+
+function renderModel() {
+    byId('activeProvider').hidden = provider.type === 'google';
+    byId('currentModelLabel').textContent = provider.name;
+    byId('currentModelIcon').setAttribute('href', '#icon-' + providerAppearance[provider.type].icon);
+    renderCalendarAction();
+}
+
+function renderGooglePicker() {
+    googlePicker.hidden = provider.type !== 'google' || !providerKey();
+    googleModelChoices.hidden = Boolean(catalogRequest) || !googleModels?.length;
+    byId('googleModelName').textContent = selectedGoogleModel()?.name || 'Choose a model';
+    googleModelList.replaceChildren();
+    for (const { name, id } of googleModels ?? []) {
+        const row = document.createElement('li');
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.value = id;
+        button.setAttribute('aria-pressed', String(id === preferredGoogleModel));
+        button.append(name);
+        if (name !== id) {
+            const identifier = document.createElement('code');
+            identifier.textContent = id;
+            button.append(identifier);
         }
+        row.append(button);
+        googleModelList.append(row);
+    }
+    refreshGoogleButton.disabled = Boolean(catalogRequest);
+    catalogStatus.textContent = catalogMessage;
+}
 
-        updateEnginePill();
-        updateButtonState();
-        if (shouldInit) initializeModel();
+function renderKeyForm(editing = false) {
+    const storage = keyStorage();
+    const key = providerKey();
+    modelConfig.hidden = !storage;
+    keyForm.hidden = !storage || (!editing && Boolean(key));
+    editKey.hidden = !storage || !keyForm.hidden;
+    if (!keyForm.hidden) {
+        byId('apiKeyLabel').textContent = provider.type === 'google' ? 'Google AI Studio API key' : 'OpenRouter API key';
+        apiKeyInput.value = key || '';
+    } else {
+        apiKeyInput.value = '';
+    }
+}
+
+function openModelDialog({ focusModel = false } = {}) {
+    renderKeyForm();
+    modelDialog.showModal();
+    if (focusModel && !keyForm.hidden) apiKeyInput.focus();
+    else if (focusModel && !googlePicker.hidden && !googleModelChoices.hidden) {
+        googleModelChoices.open = true;
+        googleModelSummary.focus();
+    }
+    else byId('closeTray').focus();
+}
+
+async function initializeModel({ refresh = false } = {}) {
+    const attempt = ++modelAttempt;
+    catalogRequest?.abort();
+    catalogRequest = null;
+    parser = null;
+    modelLoading = false;
+
+    const model = provider;
+    const key = providerKey();
+    if (keyStorage() && !key) {
+        providerStatus.textContent = 'An API key is required.';
+        renderModel();
+        renderGooglePicker();
+        return;
     }
 
-    function updateEnginePill() {
-        const model = MODEL_OPTIONS.find(m => m.id === selectedModelId);
-        currentModelLabel.textContent = model ? model.name : 'Unknown';
-        enginePill.classList.add('visible');
-    }
+    modelLoading = true;
+    providerStatus.textContent = model.type === 'google' ? '' : 'Connecting…';
+    renderModel();
 
-    function openTray() {
-        const patternModels = MODEL_OPTIONS.filter(m => m.servingPattern === currentPattern);
-        trayList.innerHTML = '';
-        
-        patternModels.forEach(model => {
-            const item = document.createElement('div');
-            item.className = `tray-item ${model.id === selectedModelId ? 'selected' : ''}`;
-            
-            // Add pencil icon for cloud models
-            const isCloud = ['google', 'openrouter'].includes(model.type);
-            const editHtml = isCloud ? `
-                <div class="edit-icon" title="Configure Model">
-                    <span class="material-symbols-rounded" style="font-size: 18px;">edit</span>
-                </div>
-            ` : '';
-
-            item.innerHTML = `
-                <div>
-                    <div style="font-weight: 600;">${model.name}</div>
-                    <div class="model-desc">${model.description}</div>
-                </div>
-                ${editHtml}
-            `;
-
-            item.onclick = (e) => {
-                // If clicked the edit icon specifically
-                if (e.target.closest('.edit-icon')) {
-                    e.stopPropagation();
-                    selectedModelId = model.id;
-                    localStorage.setItem(STORAGE_KEYS.PREFERRED_MODEL_ID, model.id);
-                    updateEnginePill();
-                    closeTray();
-                    toggleConfig(true);
-                    return;
+    try {
+        let googleModel;
+        if (model.type === 'google') {
+            if (refresh || !googleModels) {
+                googleModels = null;
+                catalogRequest = new AbortController();
+                catalogMessage = 'Loading Google models…';
+                renderGooglePicker();
+                try {
+                    const models = await listGoogleModels(key, AbortSignal.any([
+                        catalogRequest.signal,
+                        AbortSignal.timeout(15000)
+                    ]));
+                    if (attempt !== modelAttempt) return;
+                    googleModels = models;
+                } finally {
+                    if (attempt === modelAttempt) catalogRequest = null;
                 }
+            }
+            googleModel = selectedGoogleModel();
+            catalogMessage = googleModel ? '' : !googleModels.length
+                ? 'Google returned no eligible Gemini models.'
+                : preferredGoogleModel ? 'Your saved model is unavailable. Choose another model.'
+                : 'Choose a model to continue.';
+            if (!googleModel) return;
+        }
 
-                selectedModelId = model.id;
-                localStorage.setItem(STORAGE_KEYS.PREFERRED_MODEL_ID, model.id);
-                closeTray();
-                updateEnginePill();
-                updateButtonState();
-                initializeModel();
-            };
-            trayList.appendChild(item);
-        });
-
-        modelTray.classList.add('open');
-        trayOverlay.classList.add('visible');
-    }
-
-    function closeTray() {
-        modelTray.classList.remove('open');
-        trayOverlay.classList.remove('visible');
-    }
-
-    function toggleConfig(show) {
-        isConfiguring = show;
-        if (show) {
-            const model = MODEL_OPTIONS.find(m => m.id === selectedModelId);
-            // Dynamic Visibility
-            keyGroup.classList.toggle('hidden', !['google', 'openrouter'].includes(model.type));
-            urlGroup.classList.toggle('hidden', !['ollama', 'lmstudio', 'openrouter'].includes(model.type));
-            
-            // Fill existing
-            if (model.type === 'google') apiKeyInput.value = localStorage.getItem(STORAGE_KEYS.API_KEY) || '';
-            if (model.type === 'openrouter') apiKeyInput.value = localStorage.getItem(STORAGE_KEYS.OPENROUTER_KEY) || '';
-            baseUrlInput.value = model.baseUrl || ''; // Fallback to constant
-            
-            actionFlipCard.classList.add('flipped');
+        const nextParser = new EventParser();
+        parser = nextParser;
+        await nextParser.setModel(model.id, key, googleModel?.id);
+        if (attempt === modelAttempt) providerStatus.textContent = '';
+    } catch (error) {
+        if (attempt !== modelAttempt) return;
+        if (model.type === 'google' && !googleModels) {
+            catalogMessage = error.name === 'TimeoutError' ? 'The catalog request timed out. Try refreshing.'
+                : error instanceof TypeError ? 'Could not reach Google. Check your connection and refresh.'
+                : error.message;
         } else {
-            actionFlipCard.classList.remove('flipped');
+            providerStatus.textContent = 'Could not connect to ' + model.name + '.';
+        }
+    } finally {
+        if (attempt === modelAttempt) {
+            modelLoading = false;
+            renderModel();
+            renderGooglePicker();
         }
     }
+}
 
-    function updateButtonState() {
-        const model = MODEL_OPTIONS.find(m => m.id === selectedModelId);
-        const needsKey = ['google', 'openrouter'].includes(model.type);
-        const hasKey = needsKey ? (model.type === 'google' ? localStorage.getItem(STORAGE_KEYS.API_KEY) : localStorage.getItem(STORAGE_KEYS.OPENROUTER_KEY)) : true;
-        
-        if (needsKey && !hasKey) {
-            mainActionButton.classList.add('warning');
-            buttonText.textContent = 'Setup Required';
-        } else {
-            mainActionButton.classList.remove('warning');
-            buttonText.textContent = 'Create Event';
-        }
+function showError(message) {
+    eventError.textContent = message;
+    eventError.hidden = !message;
+}
+
+async function openEventInCalendar(event) {
+    event.preventDefault();
+    if (openingCalendar) return;
+    if ((keyStorage() && !providerKey()) || (provider.type === 'google' && !selectedGoogleModel())) {
+        openModelDialog({ focusModel: true });
+        return;
     }
 
-    async function initializeModel() {
-        updateConnectionStatus(STATUS.CONNECTING);
-        const model = MODEL_OPTIONS.find(m => m.id === selectedModelId);
-        if (!model) return;
-
-        let key = null;
-        if (model.type === 'google') key = localStorage.getItem(STORAGE_KEYS.API_KEY);
-        if (model.type === 'openrouter') key = localStorage.getItem(STORAGE_KEYS.OPENROUTER_KEY);
-
-        try {
-            await parser.setModel(selectedModelId, key);
-            updateConnectionStatus(STATUS.CONNECTED, model.name);
-        } catch (e) {
-            updateConnectionStatus(STATUS.DISCONNECTED, e.message);
-        }
+    const text = eventInput.value.trim();
+    if (!text) {
+        showError('Describe an event to open in Calendar.');
+        eventInput.focus();
+        return;
     }
+    if (!parser || modelLoading) return;
 
-    // --- Action Button Events ---
-    mainActionButton.addEventListener('click', () => {
-        const model = MODEL_OPTIONS.find(m => m.id === selectedModelId);
-        const needsKey = ['google', 'openrouter'].includes(model.type);
-        const hasKey = needsKey ? (model.type === 'google' ? localStorage.getItem(STORAGE_KEYS.API_KEY) : localStorage.getItem(STORAGE_KEYS.OPENROUTER_KEY)) : true;
-        
-        if (needsKey && !hasKey) {
-            toggleConfig(true);
-        } else {
-            createEvent();
+    const activeParser = parser;
+    const revision = inputRevision;
+    openingCalendar = true;
+    showError('');
+    calendarStatus.textContent = 'Opening Google Calendar.';
+    renderCalendarAction();
+    try {
+        const calendarUrl = await activeParser.parseEvent(text, { preferNative: false });
+        if (revision === inputRevision && activeParser === parser && !modelDialog.open) {
+            window.location.assign(calendarUrl);
         }
-    });
-
-    saveConfigButton.addEventListener('click', () => {
-        const model = MODEL_OPTIONS.find(m => m.id === selectedModelId);
-        if (model.type === 'google') localStorage.setItem(STORAGE_KEYS.API_KEY, apiKeyInput.value);
-        if (model.type === 'openrouter') localStorage.setItem(STORAGE_KEYS.OPENROUTER_KEY, apiKeyInput.value);
-        
-        showToast('Configuration saved', 'success');
-        toggleConfig(false);
-        updateButtonState();
-        initializeModel();
-    });
-
-    // --- Other Events ---
-    cancelConfigButton.addEventListener('click', () => toggleConfig(false));
-    currentModelLabel.addEventListener('click', openTray);
-    closeTrayBtn.addEventListener('click', closeTray);
-    trayOverlay.addEventListener('click', closeTray);
-
-    dockItems.forEach(item => {
-        item.addEventListener('click', () => selectPattern(item.getAttribute('data-pattern')));
-    });
-
-    // Enter key to submit
-    eventInput.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            mainActionButton.click();
+    } catch (error) {
+        if (revision === inputRevision && activeParser === parser) {
+            showError(error.message || 'Could not open Calendar. Try again.');
         }
-    });
-
-    document.querySelectorAll('.chip').forEach(chip => {
-        chip.addEventListener('click', () => {
-            const text = chip.getAttribute('data-example');
-            eventInput.value = '';
-            let i = 0;
-            const interval = setInterval(() => {
-                eventInput.value += text[i++];
-                if (i >= text.length) clearInterval(interval);
-            }, 20);
-        });
-    });
-
-    themeToggle.addEventListener('click', () => {
-        const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
-        document.documentElement.setAttribute('data-theme', next);
-        localStorage.setItem(STORAGE_KEYS.THEME, next);
-    });
-
-    function initTheme() {
-        document.documentElement.setAttribute('data-theme', localStorage.getItem(STORAGE_KEYS.THEME) || 'dark');
+    } finally {
+        openingCalendar = false;
+        calendarStatus.textContent = '';
+        renderCalendarAction();
     }
+}
 
-    function updateConnectionStatus(status, info) {
-        statusDot.className = `dot ${status}`;
-        statusText.textContent = status === STATUS.CONNECTED ? `Ready: ${info}` : status === STATUS.CONNECTING ? 'Initializing...' : 'Offline';
-        magicBoxContainer.classList.toggle('active', status === STATUS.CONNECTED);
-    }
-
-    function showToast(msg, type = 'info', duration = 4000) {
-        const toast = document.createElement('div');
-        toast.className = `toast ${type}`;
-        
-        const icons = {
-            success: 'check_circle',
-            error: 'error',
-            info: 'info'
-        };
-        
-        toast.innerHTML = `
-            <span class="material-symbols-rounded" style="font-size: 20px;">${icons[type] || 'info'}</span>
-            <span>${msg}</span>
-        `;
-        
-        toastContainer.appendChild(toast);
-        
-        setTimeout(() => {
-            toast.classList.add('hiding');
-            setTimeout(() => toast.remove(), 300);
-        }, duration);
-    }
-
-    async function createEvent() {
-        const text = eventInput.value.trim();
-        if (!text) return;
-        
-        // Loading state
-        mainActionButton.disabled = true;
-        mainActionButton.classList.add('loading');
-        buttonText.textContent = 'Processing ...';
-        
-        try {
-            const url = await parser.parseEvent(text);
-            window.open(url, '_blank');
-        } catch (e) {
-            showToast(e.message, 'error', 6000);
-        } finally {
-            mainActionButton.disabled = false;
-            mainActionButton.classList.remove('loading');
-            updateButtonState(); // Restore button text
-        }
+eventForm.addEventListener('submit', openEventInCalendar);
+eventInput.addEventListener('keydown', event => {
+    if (desktopKeyboard.matches && event.key === 'Enter' && !event.shiftKey && !event.isComposing) {
+        event.preventDefault();
+        if (!calendarButton.disabled && !event.repeat) eventForm.requestSubmit();
     }
 });
+eventInput.addEventListener('input', () => {
+    inputRevision++;
+    showError('');
+    if (!CSS.supports('field-sizing', 'content')) {
+        eventInput.style.height = 'auto';
+        eventInput.style.height = eventInput.scrollHeight + 2 + 'px';
+    }
+});
+settingsButton.addEventListener('click', () => openModelDialog());
+byId('closeTray').addEventListener('click', () => modelDialog.close());
+modelDialog.addEventListener('close', () => { googleModelChoices.open = false; });
+providerChoices.addEventListener('change', event => {
+    provider = MODEL_OPTIONS.find(model => model.id === event.target.value);
+    googleModelChoices.open = false;
+    localStorage.setItem(STORAGE_KEYS.PREFERRED_MODEL_ID, provider.id);
+    showError('');
+    renderKeyForm();
+    initializeModel();
+});
+editKey.addEventListener('click', () => {
+    renderKeyForm(true);
+    apiKeyInput.focus();
+});
+keyForm.addEventListener('submit', async event => {
+    event.preventDefault();
+    const model = provider;
+    const key = apiKeyInput.value.trim();
+    localStorage.setItem(keyStorage(), key);
+    localStorage.setItem(STORAGE_KEYS.PREFERRED_MODEL_ID, model.id);
+    if (model.type === 'google') googleModels = null;
+    renderKeyForm();
+    if (key) {
+        if (model.type === 'google') byId('closeTray').focus();
+        else modelDialog.close();
+    }
+    await initializeModel();
+    if (model === provider && modelDialog.open && !googlePicker.hidden && !googleModelChoices.hidden &&
+        document.activeElement === byId('closeTray')) {
+        googleModelChoices.open = !selectedGoogleModel();
+        googleModelSummary.focus();
+    }
+});
+refreshGoogleButton.addEventListener('click', () => initializeModel({ refresh: true }));
+googleModelList.addEventListener('click', event => {
+    const button = event.target.closest('button');
+    if (!button) return;
+    preferredGoogleModel = button.value;
+    localStorage.setItem(STORAGE_KEYS.GOOGLE_MODEL_ID, preferredGoogleModel);
+    localStorage.setItem(STORAGE_KEYS.PREFERRED_MODEL_ID, provider.id);
+    showError('');
+    modelDialog.close();
+    initializeModel();
+});
+renderKeyForm();
+initializeModel();
+if (desktopKeyboard.matches && document.activeElement === document.body) eventInput.focus();

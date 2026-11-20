@@ -55,11 +55,12 @@ class EventParser {
         return this.currentModel ? this.currentModel.getStatus().message : 'No model selected';
     }
 
-    async setModel(modelId, apiKey = null) {
+    async setModel(modelId, apiKey = null, modelName) {
         const modelConfig = MODEL_OPTIONS.find(m => m.id === modelId);
         if (!modelConfig) throw new Error(`Model ${modelId} not found`);
 
         const config = { ...modelConfig };
+        if (modelName) config.modelName = modelName;
         if (config.type === 'google' || config.type === 'openrouter') {
              config.apiKey = apiKey;
         }
@@ -122,25 +123,11 @@ class EventParser {
                 type: 'ollama'
             }));
             
-            // Add Gemini model
-            models.push({
-                name: 'gemini-3.0-flash',
-                size: 'Cloud',
-                modified: new Date().toLocaleDateString(),
-                type: 'google'
-            });
-            
             return models;
         } catch (error) {
             console.error('Error fetching available models:', error);
             
-            // Return just the Gemini model if Ollama is not available
-            return [{
-                name: 'gemini-3.0-flash',
-                size: 'Cloud',
-                modified: new Date().toLocaleDateString(),
-                type: 'google'
-            }];
+            return [];
         }
     }
     
@@ -184,8 +171,8 @@ class EventParser {
         };
     }
 
-    createGoogleCalendarUrl(details) {
-        const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+    createGoogleCalendarUrl(details, { preferNative = true } = {}) {
+        const isIOS = preferNative && /iPhone|iPad|iPod/i.test(navigator.userAgent);
         
         if (isIOS) {
             const params = new URLSearchParams({
@@ -221,7 +208,7 @@ class EventParser {
         return `${baseUrl}?${params.toString()}`;
     }
 
-    async parseEvent(text) {
+    async parseEvent(text, options) {
         if (!this.currentModel) throw new Error("No model selected or initialized");
 
         const formattedPrompt = await this.prompt.format({
@@ -242,7 +229,7 @@ class EventParser {
             details.recur = `RRULE:${details.recur}`;
         }
 
-        return this.createGoogleCalendarUrl(details);
+        return this.createGoogleCalendarUrl(details, options);
     }
 }
 

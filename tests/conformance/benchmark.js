@@ -80,7 +80,7 @@ async function runBenchmark() {
             };
 
             try {
-                await parser.setModel(plan.modelId, plan.apiKey);
+                await parser.setModel(plan.modelConfig.id, plan.apiKey, plan.modelConfig.modelName);
             } catch (e) {
                 hadErrors = true;
                 providerEval.status = 'error';
